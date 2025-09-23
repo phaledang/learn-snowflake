@@ -564,11 +564,16 @@ You've mastered Snowflake security and data sharing! You now understand:
 
 ## 🔜 Next Steps
 
-Continue with [Lab 07: Performance Optimization](../lab07/) to learn:
-- Query optimization techniques
-- Warehouse sizing and scaling
-- Clustering and partitioning strategies
-- Cost optimization methods
+Continue with [Lab 07: Advanced Python LangChain OpenAI Assistant](../lab07/) to build:
+- AI-powered natural language database queries
+- Intelligent conversation interfaces with Snowflake
+- Advanced file processing and analysis capabilities
+- Enterprise-ready AI assistant with governance and security
+
+Or proceed to [Lab 08: Real-World Data Engineering Project](../lab08/) for:
+- Complete end-to-end data pipeline implementation
+- Production-scale e-commerce analytics platform
+- Advanced monitoring and alerting systems
 
 ## 🆘 Troubleshooting
 
