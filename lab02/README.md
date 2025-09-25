@@ -70,32 +70,31 @@ FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
 ### 2.1 Working with Different Data Types
 
 ```sql
--- Create a comprehensive table with various data types
-CREATE OR REPLACE TABLE data_types_demo (
-    id NUMBER,
-    name STRING,
-    age NUMBER(3),
-    salary NUMBER(10,2),
-    is_active BOOLEAN,
-    hire_date DATE,
-    last_login TIMESTAMP,
-    metadata VARIANT,
-    skills ARRAY,
-    address OBJECT
+-- Optional: drop the table if you really want to reset it
+-- DROP TABLE IF EXISTS data_types_demo;
+
+CREATE TABLE IF NOT EXISTS data_types_demo (
+    id         NUMBER,
+    name       STRING,
+    age        NUMBER(3),
+    salary     NUMBER(10,2),
+    is_active  BOOLEAN,
+    hire_date  DATE,
+    last_login TIMESTAMP_NTZ,
+    metadata   VARIANT,
+    skills     ARRAY,
+    address    OBJECT
 );
 
--- Insert data with various types
-INSERT INTO data_types_demo VALUES 
-(1, 'Alice Johnson', 28, 75000.50, TRUE, '2023-01-15', 
- '2024-01-15 08:30:00', 
- '{"department": "Engineering", "level": "Senior"}',
- ['Python', 'SQL', 'Snowflake'],
- {'street': '123 Main St', 'city': 'Seattle', 'state': 'WA'}),
-(2, 'Bob Smith', 35, 82000.00, FALSE, '2022-06-20',
- '2024-01-10 14:22:15',
- '{"department": "Marketing", "level": "Manager"}',
- ['JavaScript', 'HTML', 'CSS', 'React'],
- {'street': '456 Oak Ave', 'city': 'Portland', 'state': 'OR'});
+INSERT INTO data_types_demo
+    (id, name, age, salary, is_active, hire_date, last_login, metadata, skills, address)
+SELECT
+    3, 'Charlie', 29, 70000, TRUE, TO_DATE('2023-05-01'),
+    TO_TIMESTAMP_NTZ('2024-02-01 09:00:00'),
+    PARSE_JSON('{"department":"Finance","level":"Senior"}'),
+    PARSE_JSON('["Excel","SQL"]'),
+    PARSE_JSON('{"street":"789 Pine Rd","city":"Austin","state":"TX"}');
+
 
 -- Query the data
 SELECT * FROM data_types_demo;
