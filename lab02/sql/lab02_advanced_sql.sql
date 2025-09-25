@@ -34,41 +34,31 @@ SHOW WAREHOUSES;
 -- SECTION 2: ADVANCED DATA TYPES
 -- ============================================================================
 
--- Create table with comprehensive data types
-CREATE OR REPLACE TABLE data_types_demo (
-    id NUMBER,
-    name STRING,
-    age NUMBER(3),
-    salary NUMBER(10,2),
-    is_active BOOLEAN,
-    hire_date DATE,
-    last_login TIMESTAMP,
-    metadata VARIANT,
-    skills ARRAY,
-    address OBJECT,
-    notes TEXT
+-- Optional: drop the table if you really want to reset it
+-- DROP TABLE IF EXISTS data_types_demo;
+
+CREATE TABLE IF NOT EXISTS data_types_demo (
+    id         NUMBER,
+    name       STRING,
+    age        NUMBER(3),
+    salary     NUMBER(10,2),
+    is_active  BOOLEAN,
+    hire_date  DATE,
+    last_login TIMESTAMP_NTZ,
+    metadata   VARIANT,
+    skills     ARRAY,
+    address    OBJECT
 );
 
--- Insert sample data with various types
-INSERT INTO data_types_demo VALUES 
-(1, 'Alice Johnson', 28, 75000.50, TRUE, '2023-01-15', 
- '2024-01-15 08:30:00', 
- PARSE_JSON('{"department": "Engineering", "level": "Senior", "projects": ["API", "Database"]}'),
- ['Python', 'SQL', 'Snowflake', 'Docker'],
- OBJECT_CONSTRUCT('street', '123 Main St', 'city', 'Seattle', 'state', 'WA', 'zip', '98101'),
- 'Excellent performance in Q4'),
-(2, 'Bob Smith', 35, 82000.00, FALSE, '2022-06-20',
- '2024-01-10 14:22:15',
- PARSE_JSON('{"department": "Marketing", "level": "Manager", "team_size": 8}'),
- ['JavaScript', 'HTML', 'CSS', 'React', 'Marketing'],
- OBJECT_CONSTRUCT('street', '456 Oak Ave', 'city', 'Portland', 'state', 'OR', 'zip', '97201'),
- 'Led successful product launch'),
-(3, 'Carol Davis', 42, 95000.75, TRUE, '2021-03-10',
- '2024-01-14 09:45:30',
- PARSE_JSON('{"department": "Data Science", "level": "Principal", "certifications": ["AWS", "Snowflake"]}'),
- ['Python', 'R', 'SQL', 'Machine Learning', 'Statistics'],
- OBJECT_CONSTRUCT('street', '789 Pine Rd', 'city', 'San Francisco', 'state', 'CA', 'zip', '94102'),
- 'Data science expert with ML focus');
+INSERT INTO data_types_demo
+    (id, name, age, salary, is_active, hire_date, last_login, metadata, skills, address)
+SELECT
+    3, 'Charlie', 29, 70000, TRUE, TO_DATE('2023-05-01'),
+    TO_TIMESTAMP_NTZ('2024-02-01 09:00:00'),
+    PARSE_JSON('{"department":"Finance","level":"Senior"}'),
+    PARSE_JSON('["Excel","SQL"]'),
+    PARSE_JSON('{"street":"789 Pine Rd","city":"Austin","state":"TX"}');
+
 
 -- Query semi-structured data
 SELECT 
