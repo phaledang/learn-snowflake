@@ -1,0 +1,40 @@
+# Python Requirements for Lab 07: Advanced LangChain OpenAI Assistant
+# Install with: pip install -r requirements.txt
+
+# Core Snowflake connectivity (inherited from lab05)
+snowflake-connector-python==3.6.0
+pandas==2.1.4
+numpy==1.24.3
+
+# LangChain core framework
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.13
+
+# Azure OpenAI integration
+openai>=1.7.0
+azure-openai>=1.7.0
+
+# Environment management
+python-dotenv==1.0.0
+
+# File handling and code interpretation
+pypdf2>=3.0.0
+python-docx>=1.1.0
+python-pptx>=0.6.20
+openpyxl==3.1.2
+
+# Additional utilities
+requests==2.31.0
+sqlparse==0.4.4
+pydantic>=2.5.0
+tiktoken>=0.5.0
+
+# Web framework (optional for advanced examples)
+flask==3.0.0
+streamlit>=1.28.0
+
+# Development and testing
+jupyter==1.0.0
+ipykernel==6.25.0

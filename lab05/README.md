@@ -985,6 +985,12 @@ Continue with [Lab 06: Data Sharing & Security](../lab06/) to explore:
 - Data governance practices
 - Privacy and compliance features
 
+Or jump ahead to [Lab 07: Advanced Python LangChain OpenAI Assistant](../lab07/) to build:
+- AI-powered natural language database queries
+- Intelligent conversation interfaces
+- Advanced file processing and analysis
+- Enterprise-ready AI assistant with Snowflake integration
+
 ## 🆘 Troubleshooting
 
 ### Common Issues:
