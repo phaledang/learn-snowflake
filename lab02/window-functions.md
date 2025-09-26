@@ -3,7 +3,7 @@
 ## Why “Window” Functions?
 
 A *window* is the set of rows a function can “see” when computing a value for the current row.  
-Defined by:
+Each row computes a value by “looking at” a *window* of related rows defined by `PARTITION BY` (which rows are included) and `ORDER BY` (their sequence). The row keeps all its columns plus the calculated value—unlike `GROUP BY`, which collapses rows.
 
 - `PARTITION BY` – splits rows into groups (like little windows).  
 - `ORDER BY` – defines order within each group.  
@@ -347,11 +347,8 @@ ORDER BY emp_id, event_date;
 
 ---
 
-## Why the Name “Window Function”?
 
-Each row computes a value by “looking at” a *window* of related rows defined by `PARTITION BY` (which rows are included) and `ORDER BY` (their sequence). The row keeps all its columns plus the calculated value—unlike `GROUP BY`, which collapses rows.
 
----
 
 ## Tips
 
