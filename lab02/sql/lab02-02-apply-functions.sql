@@ -1,8 +1,20 @@
+
 /* ============================
  A) De-duplication with ROW_NUMBER
     Rule: rows are duplicates if ALL columns match.
     Keep the FIRST row per duplicate group (earliest event_date, then emp_id).
 ============================ */
+
+-- Query data first
+ SELECT emp_id, name, department, event_date, salary, rn
+  FROM (
+    SELECT emp_id, name, department, event_date, salary,
+           ROW_NUMBER() OVER (
+             PARTITION BY emp_id, name, department, event_date, salary
+             ORDER BY event_date ASC, emp_id ASC
+           ) AS rn
+    FROM employee_events
+  )
 
 -- Preview which rows would be deleted (rn > 1)
 SELECT *
@@ -120,3 +132,14 @@ FROM (
 )
 WHERE rnk <= 2
 ORDER BY department, rnk, name;
+
+-- query data again
+ SELECT emp_id, name, department, event_date, salary, rn
+  FROM (
+    SELECT emp_id, name, department, event_date, salary,
+           ROW_NUMBER() OVER (
+             PARTITION BY emp_id, name, department, event_date, salary
+             ORDER BY event_date ASC, emp_id ASC
+           ) AS rn
+    FROM employee_events
+  )
