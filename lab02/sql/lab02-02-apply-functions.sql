@@ -25,24 +25,35 @@ QUALIFY ROW_NUMBER() OVER (
 ) > 1;
 
 -- Delete only exact duplicates, keeping the first
+-- Preview which rows would be deleted (rn > 1)
+SELECT *
+FROM employee_events
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY emp_id, name, department, event_date, salary
+  ORDER BY event_date ASC, emp_id ASC
+) > 1;
+
+-- Delete only the second-and-beyond identical rows
 DELETE FROM employee_events t
 USING (
   SELECT emp_id, name, department, event_date, salary
   FROM (
-    SELECT emp_id, name, department, event_date, salary,
-           ROW_NUMBER() OVER (
-             PARTITION BY emp_id, name, department, event_date, salary
-             ORDER BY event_date ASC, emp_id ASC
-           ) AS rn
+    SELECT
+      emp_id, name, department, event_date, salary,
+      ROW_NUMBER() OVER (
+        PARTITION BY emp_id, name, department, event_date, salary
+        ORDER BY event_date ASC, emp_id ASC
+      ) AS rn
     FROM employee_events
   )
   WHERE rn > 1
 ) d
-WHERE t.emp_id     = d.emp_id
-  AND t.name       <=> d.name
-  AND t.department <=> d.department
-  AND t.event_date <=> d.event_date
-  AND t.salary     <=> d.salary;
+WHERE t.emp_id = d.emp_id
+  AND (t.name       IS NOT DISTINCT FROM d.name)
+  AND (t.department IS NOT DISTINCT FROM d.department)
+  AND (t.event_date IS NOT DISTINCT FROM d.event_date)
+  AND (t.salary     IS NOT DISTINCT FROM d.salary);
+
 
 -- Verify no duplicates remain
 SELECT emp_id, name, department, event_date, salary, COUNT(*) AS cnt
