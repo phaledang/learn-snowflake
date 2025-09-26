@@ -1,4 +1,4 @@
-# Snowflake Window Functions Demo
+# Snowflake Window Functions
 
 This Markdown file documents how window functions work in Snowflake and provides ready-to-run SQL for setup, analysis, de-duplication, and ranking.
 
