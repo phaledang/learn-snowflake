@@ -1,29 +1,194 @@
 # Snowflake Window Functions
 
-This Markdown file documents how window functions work in Snowflake and provides ready-to-run SQL for setup, analysis, de-duplication, and ranking.
-
----
-
 ## Why “Window” Functions?
 
-A *window* is the set of rows a function can “see” when computing a value for the current row. You define that window using:
+A *window* is the set of rows a function can “see” when computing a value for the current row.  
+Defined by:
 
-- `PARTITION BY` – splits rows into groups (the window partitions).
-- `ORDER BY` – defines the order within each partition.
+- `PARTITION BY` – splits rows into groups (like little windows).  
+- `ORDER BY` – defines order within each group.  
 
-Unlike `GROUP BY` (which collapses rows), window functions keep **every row** and add calculated values per row.
+Unlike `GROUP BY`, window functions do not collapse rows. They keep each row and add an extra calculated value.
 
 ---
 
 ## Functions Covered
 
-- `ROW_NUMBER()` – sequential numbering within a partition (great for deduping).
-- `RANK()` – ranking with gaps when ties occur.
-- `DENSE_RANK()` – ranking without gaps.
-- `LAG()` – access a previous row’s value.
-- `LEAD()` – access a next row’s value.
+### 1. ROW_NUMBER()
+Assigns a sequential number to rows in each partition.  
+- ✅ Unique per row.  
+- ✅ Useful for de-duplication, pagination.
+
+**Example:**
+```sql
+SELECT emp_id, name, event_date, salary,
+       ROW_NUMBER() OVER (PARTITION BY emp_id ORDER BY event_date ASC) AS rn
+FROM employee_events;
+```
+👉 First row per employee has `rn = 1`. Later records get higher numbers.
 
 ---
+
+### 2. RANK()
+Assigns ranking numbers **with gaps** if ties occur.  
+- ✅ Useful for competitions or leaderboards.
+
+**Step-by-step Example:**  
+| Name   | Salary | `RANK()` |
+|--------|--------|----------|
+| Alice  | 100000 | 1        |
+| Bob    | 100000 | 1        | ← tie group of 2 rows  
+| Carol  | 95000  | 3        | ← jump: 1 + 2 tied rows = 3  
+| Dave   | 90000  | 4        |
+
+👉 That’s why you see `1, 1, 3, 4`. Rank **jumps** after a tie.
+
+**Race analogy (competition style):**
+```
+Podium (RANK)
+   #1   #1   #3
+ Alice Bob  Carol
+```
+
+---
+
+### 3. DENSE_RANK()
+Assigns ranking numbers **without gaps**.  
+- ✅ Useful when continuity of ranking matters.
+
+**Example:**  
+| Name   | Salary | `DENSE_RANK()` |
+|--------|--------|----------------|
+| Alice  | 100000 | 1              |
+| Bob    | 100000 | 1              | ← tie group  
+| Carol  | 95000  | 2              | ← no gap  
+| Dave   | 90000  | 3              |
+
+**Race analogy (dense style):**
+```
+Podium (DENSE_RANK)
+   #1   #1   #2
+ Alice Bob  Carol
+```
+
+✅ Rule of thumb:  
+- Use `RANK()` when you want “competition ranks” (with gaps).  
+- Use `DENSE_RANK()` when you want “dense ranks” (no gaps).
+
+---
+
+### 4. LAG()
+Fetches a value from the **previous row**.  
+- ✅ Compare current vs. previous record.  
+- ✅ Calculate changes/differences.
+
+**Snowflake Example:**
+```sql
+SELECT emp_id, event_date, salary,
+       LAG(salary) OVER (PARTITION BY emp_id ORDER BY event_date) AS prev_salary
+FROM employee_events
+WHERE emp_id = 101;
+```
+
+**Sample Output:**
+| emp_id | event_date | salary | prev_salary |
+|--------|------------|--------|-------------|
+| 101    | 2024-01-01 | 70000  | NULL        |
+| 101    | 2024-06-01 | 74000  | 70000       |
+| 101    | 2025-01-01 | 78000  | 74000       |
+
+👉 Pulls the salary from the earlier row.
+
+---
+
+### 5. LEAD()
+Fetches a value from the **next row**.  
+- ✅ Compare with upcoming data.  
+- ✅ Forecast changes.
+
+**Snowflake Example:**
+```sql
+SELECT emp_id, event_date, salary,
+       LEAD(salary) OVER (PARTITION BY emp_id ORDER BY event_date) AS next_salary
+FROM employee_events
+WHERE emp_id = 101;
+```
+
+**Sample Output:**
+| emp_id | event_date | salary | next_salary |
+|--------|------------|--------|-------------|
+| 101    | 2024-01-01 | 70000  | 74000       |
+| 101    | 2024-06-01 | 74000  | 78000       |
+| 101    | 2025-01-01 | 78000  | NULL        |
+
+👉 Pulls the salary from the next row.
+
+---
+
+### 6. Combined LAG + LEAD
+```sql
+SELECT emp_id, event_date, salary,
+       LAG(salary) OVER (PARTITION BY emp_id ORDER BY event_date) AS prev_salary,
+       LEAD(salary) OVER (PARTITION BY emp_id ORDER BY event_date) AS next_salary,
+       salary - LAG(salary) OVER (PARTITION BY emp_id ORDER BY event_date) AS delta_from_prev
+FROM employee_events
+WHERE emp_id = 101;
+```
+
+**Output:**
+| emp_id | event_date | salary | prev_salary | next_salary | delta_from_prev |
+|--------|------------|--------|-------------|-------------|-----------------|
+| 101    | 2024-01-01 | 70000  | NULL        | 74000       | NULL            |
+| 101    | 2024-06-01 | 74000  | 70000       | 78000       | 4000            |
+| 101    | 2025-01-01 | 78000  | 74000       | NULL        | 4000            |
+
+---
+
+## SQL Server Comparison
+
+Both `LAG()` and `LEAD()` are also available in **Microsoft SQL Server (since 2012)**.  
+Syntax is nearly identical to Snowflake.
+
+**SQL Server Syntax:**
+```sql
+LAG ( scalar_expression [ , offset , default ] ) 
+  OVER ( [ PARTITION BY partition_expression ] ORDER BY order_expression )
+
+LEAD ( scalar_expression [ , offset , default ] ) 
+  OVER ( [ PARTITION BY partition_expression ] ORDER BY order_expression )
+```
+
+**Snowflake Syntax:**
+```sql
+LAG ( <expr> [ , <offset> , <default> ] ) 
+  OVER ( [ PARTITION BY <expr1> ] ORDER BY <expr2> )
+
+LEAD ( <expr> [ , <offset> , <default> ] ) 
+  OVER ( [ PARTITION BY <expr1> ] ORDER BY <expr2> )
+```
+
+✅ Example query is **identical** in both systems:  
+```sql
+SELECT emp_id, event_date, salary,
+       LAG(salary, 1, 0)  OVER (PARTITION BY emp_id ORDER BY event_date) AS prev_salary,
+       LEAD(salary, 1, 0) OVER (PARTITION BY emp_id ORDER BY event_date) AS next_salary
+FROM employee_events;
+```
+
+---
+
+## Visual Summary
+
+| Function     | Purpose                               | Ties Handling     | Typical Use Case                     |
+|--------------|---------------------------------------|-------------------|--------------------------------------|
+| ROW_NUMBER() | Sequential numbering                  | Always unique     | De-duplication, pagination           |
+| RANK()       | Ranking with gaps on ties             | Skips ranks       | Competitions, leaderboards           |
+| DENSE_RANK() | Ranking without gaps on ties          | No skips          | Trend analysis, dense ranking        |
+| LAG()        | Value from a previous row             | N/A               | Compare with earlier data            |
+| LEAD()       | Value from a following row            | N/A               | Forecast, compare with future values |
+
+---
+
 
 ## Setup Script
 
@@ -201,9 +366,3 @@ Each row computes a value by “looking at” a *window* of related rows defined
   ```
 
 ---
-
-## Next Steps
-
-- Add **Top-N per department** with `RANK()` and a `WHERE rnk <= N` filter.
-- Try `SUM() OVER (...)`, `AVG() OVER (...)` for running totals/moving averages.
-- Explore `QUALIFY` to filter on window results without subqueries.
