@@ -79,3 +79,6 @@ config.ini
 
 # Node modules (if any JS tools are used)
 node_modules/
+
+# GitHub agents directory (contains instructions for other agents)
+.github/agents/
