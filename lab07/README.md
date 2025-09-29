@@ -236,6 +236,7 @@ With the virtual environment activated, install the required packages:
 # Install dependencies from requirements file
 pip install -r python/requirements.txt
 
+
 # Verify installation
 pip list
 ```
@@ -951,7 +952,10 @@ You've successfully built an advanced AI assistant that bridges natural language
 - **Multi-Modal Processing**: Handle text, files, and complex data analysis requests
 - **Enterprise Ready**: Security, compliance, and governance built-in
 - **Scalable Architecture**: Support for both individual and team usage
-
+## Output
+![lab07 debug](lab07-debug.png)
+![lab07 api docs](lab07-api-docs.png)
+![snowflake app data query](lab07-snowflake-app-data.png)
 ## 🔜 Next Steps
 
 Continue with [Lab 08: Real-World Data Engineering Project](../lab08/) to apply your AI assistant in:
