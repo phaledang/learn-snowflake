@@ -1,31 +1,50 @@
-# Python Requirements for Snowflake Labs
+# Python Requirements for Snowflake Labs - Lab05
 # Install with: pip install -r requirements.txt
+# Updated with Python 3.13 compatible versions
 
 # Core Snowflake connectivity
 snowflake-connector-python==3.6.0
+snowflake-sqlalchemy==1.7.7
+sqlalchemy==2.0.43
 
 # Data analysis and manipulation
-pandas==2.1.4
-numpy==1.24.3
+pandas==2.3.2
+numpy==2.3.3
 
 # Visualization
-matplotlib==3.7.2
-seaborn==0.12.2
+matplotlib==3.10.6
+seaborn==0.13.2
 
 # Environment management
-python-dotenv==1.0.0
-
-# Jupyter notebooks (optional)
-jupyter==1.0.0
-ipykernel==6.25.0
+python-dotenv==1.1.1
 
 # Web framework (for dashboard example)
-flask==3.0.0
+flask==3.1.2
 
-# Scheduling (for automated pipelines)
-schedule==1.2.0
+# HTTP requests
+requests==2.32.5
 
 # Additional useful packages
-requests==2.31.0
-openpyxl==3.1.2  # For Excel file support
-sqlparse==0.4.4  # For SQL parsing
+pillow==11.3.0  # For image processing
+packaging==25.0  # For package management utilities
+platformdirs==3.11.0  # For platform-specific directories
+
+# Cryptography and security
+cryptography==41.0.7
+pyopenssl==23.3.0
+pyjwt==2.10.1
+
+# Date and time utilities
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+
+# Parsing and file handling
+pyparsing==3.2.5
+tomlkit==0.13.3
+
+# Supporting libraries
+click==8.3.0
+colorama==0.4.6
+six==1.17.0
+typing-extensions==4.15.0

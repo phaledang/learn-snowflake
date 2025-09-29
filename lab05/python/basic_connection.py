@@ -1,23 +1,24 @@
 # Basic Snowflake Connection Example
 import snowflake.connector
 import os
+import sys
 from dotenv import load_dotenv
+
+# Add current directory to path for imports
+sys.path.append(os.path.dirname(__file__))
+from snowflake_connection import get_snowflake_connection, get_connection_info
 
 # Load environment variables
 load_dotenv()
 
 def create_connection():
-    """Create and return Snowflake connection"""
+    """Create and return Snowflake connection using connection string utility"""
     try:
-        conn = snowflake.connector.connect(
-            account=os.getenv('SNOWFLAKE_ACCOUNT'),
-            user=os.getenv('SNOWFLAKE_USER'),
-            password=os.getenv('SNOWFLAKE_PASSWORD'),
-            warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-            database=os.getenv('SNOWFLAKE_DATABASE'),
-            schema=os.getenv('SNOWFLAKE_SCHEMA')
-        )
-        print("✅ Successfully connected to Snowflake!")
+        print("Creating Snowflake connection...")
+        print(f"Connection config: {get_connection_info()}")
+        
+        conn = get_snowflake_connection()
+        print("✅ Successfully connected to Snowflake using connection utility!")
         return conn
     except Exception as e:
         print(f"❌ Error connecting to Snowflake: {e}")

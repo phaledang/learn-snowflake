@@ -19,32 +19,182 @@ By the end of this lab, you will:
 
 ## 🛠️ Step 1: Setting Up Python Environment
 
-### 1.1 Required Libraries
+### 1.1 Create Lab05 Virtual Environment
+
+> **Important**: This lab uses its own isolated virtual environment to avoid conflicts with other Python projects and ensure consistent package versions.
+
+**Navigate to Lab05 Directory:**
+```powershell
+# From the root learn-snowflake directory
+cd lab05
+```
+
+**Windows (PowerShell):**
+```powershell
+# Create virtual environment specifically for lab05
+python -m venv venv
+
+# Activate the lab05 virtual environment
+.\venv\Scripts\Activate.ps1
+
+# If you get execution policy error, run:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Verify you're in the lab05 virtual environment
+# Your prompt should show (venv) at the beginning
+```
+
+**macOS/Linux:**
+```bash
+# Create virtual environment specifically for lab05
+python -m venv venv
+
+# Activate the virtual environment
+.venv/scripts/activate
+
+# Verify you're in the lab05 virtual environment
+# Your prompt should show (venv) at the beginning
+```
+
+**Environment Structure:**
+After creating the virtual environment, your lab05 directory should look like:
+```
+lab05/
+├── README.md
+├── venv/                    # ← Virtual environment (DO NOT commit to git)
+│   ├── Scripts/            # Windows
+│   ├── bin/               # macOS/Linux
+│   └── lib/
+├── python/
+│   ├── requirements.txt
+│   ├── basic_connection.py
+│   ├── pandas_integration.py
+│   └── ...
+└── .env                    # ← Your credentials (DO NOT commit to git)
+```
+
+### 1.2 Install Required Packages
+
+With your virtual environment activated, install the required packages:
 
 ```bash
-# Install required packages
-pip install snowflake-connector-python
-pip install pandas
-pip install numpy
-pip install matplotlib
-pip install seaborn
-pip install jupyter
-pip install python-dotenv
+# Install all required packages from requirements.txt
+pip install -r python/requirements.txt
+
+# Verify installation
+pip list
 ```
 
-### 1.2 Environment Configuration
+**Or install packages individually:**
 
-Create a `.env` file for secure credential storage:
+```bash
+# Core Snowflake connectivity
+pip install pandas
+pip install snowflake-connector-python==3.6.0
+pip install snowflake-sqlalchemy==1.5.0
+pip install sqlalchemy==2.0.23
+
+# Data analysis and manipulation
+pip install pandas==2.1.4
+pip install numpy==1.24.3
+
+# Visualization
+pip install matplotlib==3.7.2
+pip install seaborn==0.12.2
+
+# Environment management
+pip install python-dotenv==1.0.0
+
+# Jupyter notebooks (optional)
+pip install jupyter==1.0.0
+pip install ipykernel==6.25.0
+
+# Web framework (for dashboard example)
+pip install flask==3.0.0
+
+# Scheduling (for automated pipelines)
+pip install schedule==1.2.0
+
+# Additional useful packages
+pip install requests==2.31.0
+pip install openpyxl==3.1.2  # For Excel file support
+pip install sqlparse==0.4.4  # For SQL parsing
+```
+
+### 1.3 Verify Lab05 Environment Setup
+
+```powershell
+# Verify you're in the lab05 virtual environment
+# Your prompt should show (venv)
+
+# Check Python version and location
+python --version
+python -c "import sys; print(f'Python path: {sys.executable}')"
+
+# Verify key packages are installed
+python -c "import snowflake.connector; print('✅ Snowflake connector installed')"
+python -c "import pandas; print('✅ Pandas installed')"
+python -c "import sqlalchemy; print('✅ SQLAlchemy installed')"
+python -c "import dotenv; print('✅ Python-dotenv installed')"
+
+# Show installed packages
+pip list | findstr -i "snowflake pandas sqlalchemy"
+```
+
+**Deactivating the Virtual Environment:**
+When you're done working in Lab05, you can deactivate the virtual environment:
+```powershell
+# Deactivate the virtual environment
+deactivate
+
+# Your prompt should no longer show (venv)
+```
+
+**Reactivating Later:**
+To work on Lab05 again later:
+```powershell
+# Navigate to lab05 directory
+cd lab05
+
+# Activate the virtual environment
+# Windows:
+.\venv\Scripts\Activate.ps1
+
+# macOS/Linux:
+# source venv/bin/activate
+```
+
+### 1.4 Environment Configuration
+
+Create a `.env` file for secure credential storage. 
 
 ```env
-# Snowflake Connection Parameters
-SNOWFLAKE_ACCOUNT=your_account_identifier
-SNOWFLAKE_USER=your_username
-SNOWFLAKE_PASSWORD=your_password
-SNOWFLAKE_WAREHOUSE=LEARN_WH
-SNOWFLAKE_DATABASE=LEARN_SNOWFLAKE
-SNOWFLAKE_SCHEMA=SANDBOX
+# Snowflake Connection String - Single line with all parameters
+SNOWFLAKE_CONNECTION_STRING=snowflake://username:password@account/database/schema?warehouse=warehouse&role=role
+
+# Example:
+# SNOWFLAKE_CONNECTION_STRING=snowflake://myuser:mypass@hwa72902.east-us-2.azure/LEARN_SNOWFLAKE/SANDBOX?warehouse=LEARN_WH&role=ACCOUNTADMIN
 ```
+
+### 1.5 VS Code Debugging Support
+
+This lab includes pre-configured VS Code debug configurations that work with the Lab05 virtual environment:
+
+- **🐼 Lab 05 Pandas Integration** - Debug pandas_integration.py
+- **🔗 Lab 05 Basic Connection Test** - Debug basic_connection.py  
+- **🛢️ Lab 05 SQLAlchemy Integration** - Debug sqlalchemy_integration.py
+- **🧪 Lab 05 SQLAlchemy Test** - Debug test_sqlalchemy_integration.py
+
+**To use VS Code debugging:**
+1. Ensure your Lab05 virtual environment is activated
+2. Open VS Code in the learn-snowflake workspace
+3. Go to Debug view (Ctrl+Shift+D)
+4. Select any Lab 05 configuration from the dropdown
+5. Press F5 to start debugging
+
+> **Note**: The debug configurations automatically use the Lab05 virtual environment and include the correct Python path settings.
+
+> **Connection Utility**: This lab uses an enhanced connection utility that automatically handles both connection string and individual parameter formats with flexible account format support.
 
 ## 🔌 Step 2: Basic Snowflake Connection
 
@@ -54,24 +204,24 @@ SNOWFLAKE_SCHEMA=SANDBOX
 # File: basic_connection.py
 import snowflake.connector
 import os
+import sys
 from dotenv import load_dotenv
+
+# Add current directory to path for imports
+sys.path.append(os.path.dirname(__file__))
+from snowflake_connection import get_snowflake_connection, get_connection_info
 
 # Load environment variables
 load_dotenv()
 
 def create_connection():
-    """Create and return Snowflake connection"""
+    """Create and return Snowflake connection using connection string utility"""
     try:
-        conn = snowflake.connector.connect(
-            account=os.getenv('SNOWFLAKE_ACCOUNT'),
-            user=os.getenv('SNOWFLAKE_USER'),
-            password=os.getenv('SNOWFLAKE_PASSWORD'),
-            warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-            database=os.getenv('SNOWFLAKE_DATABASE'),
-            schema=os.getenv('SNOWFLAKE_SCHEMA'),
-            role=os.getenv('SNOWFLAKE_ROLE'),
-        )
-        print("✅ Successfully connected to Snowflake!")
+        print("Creating Snowflake connection...")
+        print(f"Connection config: {get_connection_info()}")
+        
+        conn = get_snowflake_connection()
+        print("✅ Successfully connected to Snowflake using connection utility!")
         return conn
     except Exception as e:
         print(f"❌ Error connecting to Snowflake: {e}")
@@ -93,13 +243,14 @@ def test_connection():
             print(f"Warehouse: {result[2]}")
             
             cursor.close()
-            conn.close()
         except Exception as e:
             print(f"❌ Error executing query: {e}")
 
 if __name__ == "__main__":
     test_connection()
 ```
+
+> **🚀 New Features**: This version automatically handles both connection string and individual parameter formats, with flexible account format support and automatic fallback for different account formats.
 
 ### 2.2 Connection with Context Manager
 
@@ -153,91 +304,99 @@ if __name__ == "__main__":
 
 ## 📊 Step 3: Working with Pandas
 
-### 3.1 Pandas Integration
+> **🚀 Updated Implementation**: This lab now uses SQLAlchemy for pandas integration, which eliminates the UserWarning about DBAPI2 connections and provides better performance with modern best practices.
+
+### 3.1 Pandas Integration (Updated)
 
 ```python
 # File: pandas_integration.py
 import pandas as pd
-import snowflake.connector
+from sqlalchemy import create_engine
+from urllib.parse import quote_plus
 import os
+import sys
 from dotenv import load_dotenv
+
+# Add current directory to path for imports
+sys.path.append(os.path.dirname(__file__))
+from snowflake_connection import get_connection_info
 
 load_dotenv()
 
 class SnowflakeDataAnalyzer:
     def __init__(self):
-        self.conn = snowflake.connector.connect(
-            account=os.getenv('SNOWFLAKE_ACCOUNT'),
-            user=os.getenv('SNOWFLAKE_USER'),
-            password=os.getenv('SNOWFLAKE_PASSWORD'),
-            warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-            database=os.getenv('SNOWFLAKE_DATABASE'),
-            schema=os.getenv('SNOWFLAKE_SCHEMA')
-        )
+        # Get connection configuration from our utility
+        config = get_connection_info()
+        
+        # Check if we have a connection string first
+        conn_string = os.getenv('SNOWFLAKE_CONNECTION_STRING')
+        
+        if conn_string:
+            # Use connection string directly
+            connection_url = conn_string
+        else:
+            # Build connection string from individual parameters
+            account = config.get('account')
+            user = config.get('user')
+            password = config.get('password')
+            warehouse = config.get('warehouse')
+            database = config.get('database')
+            schema = config.get('schema')
+            role = config.get('role')
+            
+            # URL-encode password to handle special characters
+            encoded_password = quote_plus(password) if password else ''
+            
+            # Build connection URL
+            connection_url = f"snowflake://{user}:{encoded_password}@{account}/{database}/{schema}"
+            if warehouse:
+                connection_url += f"?warehouse={warehouse}"
+            if role:
+                separator = '&' if '?' in connection_url else '?'
+                connection_url += f"{separator}role={role}"
+        
+        # Create SQLAlchemy engine
+        print(f"Creating SQLAlchemy engine for account: {config.get('account', 'Unknown')}")
+        self.engine = create_engine(connection_url)
     
     def query_to_dataframe(self, query):
         """Execute query and return pandas DataFrame"""
         try:
-            df = pd.read_sql(query, self.conn)
+            # Use SQLAlchemy engine with pandas - eliminates the UserWarning
+            print(f"Executing query: {query[:100]}...")
+            df = pd.read_sql(query, self.engine)
+            print(f"✅ Query successful, returned {len(df)} rows")
             return df
         except Exception as e:
-            print(f"Error executing query: {e}")
+            print(f"❌ Error executing query: {e}")
             return None
     
     def dataframe_to_snowflake(self, df, table_name, if_exists='replace'):
-        """Write pandas DataFrame to Snowflake table"""
+        """Write pandas DataFrame to Snowflake table using SQLAlchemy"""
         try:
-            # Note: This requires pandas write capability
-            # In practice, you might use write_pandas or COPY INTO
-            
-            # For now, let's show the concept with individual inserts
-            cursor = self.conn.cursor()
-            
-            if if_exists == 'replace':
-                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-            
-            # Create table based on DataFrame structure
-            create_sql = self._generate_create_table_sql(df, table_name)
-            cursor.execute(create_sql)
-            
-            # Insert data
-            for _, row in df.iterrows():
-                values = ', '.join([f"'{str(val)}'" if pd.notna(val) else 'NULL' for val in row])
-                insert_sql = f"INSERT INTO {table_name} VALUES ({values})"
-                cursor.execute(insert_sql)
-            
-            cursor.close()
+            print(f"Writing {len(df)} rows to table: {table_name}")
+            # Use pandas to_sql with SQLAlchemy engine - much cleaner!
+            df.to_sql(
+                name=table_name.lower(),  # Snowflake prefers lowercase table names
+                con=self.engine,
+                if_exists=if_exists,
+                index=False,  # Don't write DataFrame index as a column
+                method='multi'  # Use multi-row inserts for better performance
+            )
             print(f"✅ Successfully wrote {len(df)} rows to {table_name}")
             
         except Exception as e:
             print(f"❌ Error writing to Snowflake: {e}")
     
-    def _generate_create_table_sql(self, df, table_name):
-        """Generate CREATE TABLE SQL from DataFrame"""
-        columns = []
-        for col, dtype in df.dtypes.items():
-            if dtype == 'object':
-                sql_type = 'STRING'
-            elif dtype in ['int64', 'int32']:
-                sql_type = 'NUMBER'
-            elif dtype in ['float64', 'float32']:
-                sql_type = 'FLOAT'
-            elif dtype == 'bool':
-                sql_type = 'BOOLEAN'
-            else:
-                sql_type = 'STRING'
-            
-            columns.append(f"{col} {sql_type}")
-        
-        return f"CREATE TABLE {table_name} ({', '.join(columns)})"
-    
     def close(self):
         """Close connection"""
-        if self.conn:
-            self.conn.close()
+        if self.engine:
+            self.engine.dispose()
+            print("Connection closed")
 
-# Example usage
-if __name__ == "__main__":
+# Example usage and analysis functions
+def analyze_sample_data():
+    """Analyze sample data from Snowflake"""
     analyzer = SnowflakeDataAnalyzer()
     
     # Query data into pandas
@@ -250,7 +409,8 @@ if __name__ == "__main__":
             product_category,
             amount,
             region
-        FROM sample_data
+        FROM employees
+        LIMIT 100
     """)
     
     if df is not None:
@@ -260,16 +420,46 @@ if __name__ == "__main__":
         print("\nFirst 5 rows:")
         print(df.head())
         
-        print("\nSummary statistics:")
+        print("\nData types:")
+        print(df.dtypes)
+        
+        print("\nBasic statistics:")
         print(df.describe())
         
-        print("\nValue counts by region:")
-        print(df['region'].value_counts())
+        # Create sample analysis DataFrame
+        analysis_results = pd.DataFrame({
+            'metric': ['total_rows', 'unique_customers', 'avg_amount'],
+            'value': [len(df), df['customer_id'].nunique() if 'customer_id' in df.columns else 0, 
+                     df['amount'].mean() if 'amount' in df.columns else 0]
+        })
+        
+        # Write analysis results back to Snowflake
+        analyzer.dataframe_to_snowflake(analysis_results, 'python_analysis_results')
     
     analyzer.close()
+
+if __name__ == "__main__":
+    analyze_sample_data()
 ```
 
-### 3.2 Advanced Data Analysis
+### 🚀 Key Improvements in This Implementation
+
+**1. SQLAlchemy Integration**
+- ✅ **No more UserWarning**: Eliminates pandas warning about DBAPI2 connections
+- ⚡ **Better Performance**: Uses `method='multi'` for faster bulk inserts
+- 🔧 **Cleaner Code**: `df.to_sql()` handles table creation automatically
+
+**2. Connection String Support**
+- 🔗 **Flexible Configuration**: Supports both connection string and individual parameters
+- 🎛️ **Automatic Fallback**: Tries different account format variations automatically
+- 🔒 **URL Encoding**: Handles passwords with special characters properly
+
+**3. Enhanced Error Handling**
+- 📝 **Better Logging**: Detailed progress messages and error reporting
+- 🔄 **Robust Connections**: Automatic retry with different account formats
+- 🛡️ **Safe Operations**: Proper connection disposal and resource management
+
+### 3.2 Advanced Data Analysis (Updated)
 
 ```python
 # File: advanced_analysis.py
@@ -365,6 +555,29 @@ def create_visualizations(df):
 
 if __name__ == "__main__":
     analyze_sales_data()
+```
+
+### 🧪 Testing Your Implementation
+
+You can test the updated implementation using the pre-configured VS Code debug configurations:
+
+1. **🐼 Lab 05 Pandas Integration**: Test the main pandas_integration.py file
+2. **🧪 Lab 05 SQLAlchemy Test**: Run comprehensive SQLAlchemy integration tests
+3. **🔗 Lab 05 Basic Connection Test**: Verify basic connectivity
+
+**Manual Testing:**
+```bash
+# Navigate to lab05 directory
+cd lab05
+
+# Test basic connection
+python python/basic_connection.py
+
+# Test pandas integration
+python python/pandas_integration.py
+
+# Run SQLAlchemy integration test
+python python/test_sqlalchemy_integration.py
 ```
 
 ## 🤖 Step 4: Automated Data Pipelines
@@ -960,14 +1173,16 @@ if __name__ == "__main__":
 
 ## ✅ Lab Completion Checklist
 
-- [ ] Set up Python environment with required packages
-- [ ] Created secure connection to Snowflake using Python
-- [ ] Integrated pandas for data analysis
-- [ ] Built automated ETL pipelines
+- [ ] Set up Python environment with required packages using `pip install -r python/requirements.txt`
+- [ ] Created secure connection to Snowflake using connection string or individual parameters
+- [ ] Tested connection utility with flexible account format support
+- [ ] Integrated pandas with SQLAlchemy for improved performance (no UserWarning)
+- [ ] Built automated ETL pipelines with connection string support
 - [ ] Implemented data quality validation
 - [ ] Created scheduled data processing jobs
 - [ ] Built command-line interface for Snowflake
 - [ ] Developed web dashboard for data visualization
+- [ ] Tested implementation using VS Code debug configurations
 
 ## 🎉 Congratulations!
 
