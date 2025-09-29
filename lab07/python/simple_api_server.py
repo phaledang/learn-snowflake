@@ -6,6 +6,9 @@ Uses connection string configuration
 import os
 import sys
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict, Any
@@ -19,6 +22,23 @@ app = FastAPI(
     title="Snowflake Data API",
     description="Simple REST API for querying Snowflake data using connection string",
     version="1.0.0"
+)
+
+# Enable CORS for cross-origin requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React dev server
+        "http://localhost:5000",  # Flask dev server 
+        "http://localhost:8080",  # Vue/other dev servers
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5000", 
+        "http://127.0.0.1:8080",
+        "*"  # Allow all origins for development
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # Response models
@@ -52,6 +72,19 @@ async def health_check():
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+# CORS preflight handler
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    """Handle CORS preflight requests"""
+    return JSONResponse(
+        content={"message": "OK"}, 
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 @app.get("/employees", response_model=List[Employee])
 async def get_employees():

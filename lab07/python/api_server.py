@@ -5,6 +5,7 @@ Provides REST API endpoints for interacting with the AI assistant
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
@@ -24,12 +25,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS
+# Enable CORS for cross-origin requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # React dev server
+        "http://localhost:5000",  # Flask dev server 
+        "http://localhost:8080",  # Vue/other dev servers
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5000", 
+        "http://127.0.0.1:8080",
+        "*"  # Allow all origins for development
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -78,6 +87,19 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         timestamp=datetime.now()
+    )
+
+# CORS preflight handler
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    """Handle CORS preflight requests"""
+    return JSONResponse(
+        content={"message": "OK"}, 
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
     )
 
 # Status endpoint
