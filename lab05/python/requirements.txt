@@ -4,7 +4,7 @@
 
 # Core Snowflake connectivity
 snowflake-connector-python==3.6.0
-snowflake-sqlalchemy==1.7.7
+snowflake-sqlalchemy
 sqlalchemy==2.0.43
 
 # Data analysis and manipulation
@@ -51,4 +51,3 @@ typing-extensions==4.15.0
 
 # Testing
 pytest==8.3.3
-snowflake-sqlalchemy
