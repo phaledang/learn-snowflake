@@ -7,18 +7,23 @@ from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_core.tools import BaseTool
 
 import os
+import sys
 import json
 import snowflake.connector
 import pandas as pd
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langchain.memory import ConversationBufferWindowMemory
+
+# Add current directory to path for imports
+sys.path.append(os.path.dirname(__file__))
+from snowflake_connection import get_snowflake_connection
 from langchain.schema import SystemMessage
 
 try:
-    from langchain_core.pydantic_v1 import BaseModel, Field
-except ImportError:
     from pydantic import BaseModel, Field
+except ImportError:
+    from langchain_core.pydantic_v1 import BaseModel, Field
 
 # Load environment variables
 load_dotenv()
@@ -27,35 +32,15 @@ load_dotenv()
 class SnowflakeQueryTool(BaseTool):
     """Tool for executing SQL queries against Snowflake database."""
     
-    name = "snowflake_query"
-    description = """Execute SQL queries against the Snowflake database. 
+    name: str = "snowflake_query"
+    description: str = """Execute SQL queries against the Snowflake database. 
     Use this tool to retrieve data, analyze information, or perform database operations.
     Input should be a valid SQL query string."""
-    
-    def __init__(self):
-        super().__init__()
-        self._connection = None
-    
-    def _get_connection(self):
-        """Establish connection to Snowflake if not already connected."""
-        if self._connection is None:
-            try:
-                self._connection = snowflake.connector.connect(
-                    account=os.getenv('SNOWFLAKE_ACCOUNT'),
-                    user=os.getenv('SNOWFLAKE_USER'),
-                    password=os.getenv('SNOWFLAKE_PASSWORD'),
-                    warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-                    database=os.getenv('SNOWFLAKE_DATABASE'),
-                    schema=os.getenv('SNOWFLAKE_SCHEMA')
-                )
-            except Exception as e:
-                raise Exception(f"Failed to connect to Snowflake: {str(e)}")
-        return self._connection
     
     def _run(self, query: str) -> str:
         """Execute the SQL query and return results."""
         try:
-            conn = self._get_connection()
+            conn = get_snowflake_connection()
             df = pd.read_sql(query, conn)
             
             if df.empty:
@@ -83,35 +68,15 @@ class SnowflakeQueryTool(BaseTool):
 class SchemaInspectionTool(BaseTool):
     """Tool for inspecting database schema and table structures."""
     
-    name = "schema_inspection"
-    description = """Inspect database schema, table structures, and column information.
+    name: str = "schema_inspection"
+    description: str = """Inspect database schema, table structures, and column information.
     Use this to understand available tables and their columns before writing queries.
     Input should be 'tables' to list all tables, or a table name to get column details."""
-    
-    def __init__(self):
-        super().__init__()
-        self._connection = None
-    
-    def _get_connection(self):
-        """Establish connection to Snowflake if not already connected."""
-        if self._connection is None:
-            try:
-                self._connection = snowflake.connector.connect(
-                    account=os.getenv('SNOWFLAKE_ACCOUNT'),
-                    user=os.getenv('SNOWFLAKE_USER'),
-                    password=os.getenv('SNOWFLAKE_PASSWORD'),
-                    warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-                    database=os.getenv('SNOWFLAKE_DATABASE'),
-                    schema=os.getenv('SNOWFLAKE_SCHEMA')
-                )
-            except Exception as e:
-                raise Exception(f"Failed to connect to Snowflake: {str(e)}")
-        return self._connection
     
     def _run(self, input_str: str) -> str:
         """Inspect schema or table structure."""
         try:
-            conn = self._get_connection()
+            conn = get_snowflake_connection()
             
             if input_str.lower() == 'tables':
                 # List all tables in current schema
@@ -152,8 +117,8 @@ class SchemaInspectionTool(BaseTool):
 class FileProcessingTool(BaseTool):
     """Tool for processing uploaded files and extracting content."""
     
-    name = "file_processor"
-    description = """Process uploaded files (PDF, Word, Excel, text) and extract content.
+    name: str = "file_processor"
+    description: str = """Process uploaded files (PDF, Word, Excel, text) and extract content.
     Input should be the file path. Returns extracted text content for analysis."""
     
     def _run(self, file_path: str) -> str:

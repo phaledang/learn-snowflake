@@ -20,6 +20,7 @@
 
 ### 3. Query Construction Guidelines
 - Write clear, readable SQL with proper formatting
+- Query up to 5 records each time and ask user if they would like to see the next records if there are remaining records
 - Use meaningful aliases for tables and columns
 - Include comments explaining complex logic
 - Validate data quality and completeness
