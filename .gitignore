@@ -69,13 +69,7 @@ credentials.json
 secrets.json
 config.ini
 
-# Output files
-*.png
-*.jpg
-*.jpeg
-*.pdf
-*.xlsx
-*.csv
+
 
 # Node modules (if any JS tools are used)
 node_modules/

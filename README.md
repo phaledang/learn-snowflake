@@ -40,13 +40,21 @@ Each lab contains:
 | Lab | Topic | Duration | Skills |
 |-----|-------|----------|---------|
 | [Lab 01](./lab01/) | Getting Started & Trial Setup | 30 min | Account setup, UI navigation |
-| [Lab 02](./lab02/) | Snowflake Architecture & Basic SQL | 45 min | Architecture, basic queries |
-| [Lab 03](./lab03/) | Data Loading & Warehouses | 60 min | Data ingestion, warehouse management |
-| [Lab 04](./lab04/) | Advanced SQL & Functions | 60 min | Complex queries, built-in functions |
-| [Lab 05](./lab05/) | Python Integration | 75 min | Snowflake connector, pandas |
-| [Lab 06](./lab06/) | Data Sharing & Security | 45 min | Secure views, data sharing |
-| [Lab 07](./lab07/) | Performance Optimization | 60 min | Query optimization, clustering |
-| [Lab 08](./lab08/) | Real-world Project | 90 min | End-to-end data pipeline |
+| [Lab 02](./lab02/) | Advanced SQL & Window Functions | 45 min | Analytic/window functions |
+| [Lab 03](./lab03/) | Data Loading (COPY INTO) | 60 min | File formats, staged loads |
+| [Lab 04](./lab04/) | Query Patterns & References | 60 min | Syntax expansion, reuse |
+| [Lab 05](./lab05/) | Python Integration & DataFrames | 75 min | Connector, pandas, SQLAlchemy |
+| [Lab 06](./lab06/) | Data Classification & Governance | 45 min | Tagging, sensitivity handling |
+| [Lab 07](./lab07/) | API & AI Assistant Integration | 75 min | FastAPI, LangChain, debugging |
+| [Lab 08](./lab08/) | Extension / Capstone (Placeholder) | 90 min | Consolidation, advanced build |
+
+## 🧭 Build Narrative & Evolution
+A detailed narrative of how this project was iteratively built (including prompts, troubleshooting steps, and design decisions) is available in [`HOW_IT_WAS_DONE.md`](./HOW_IT_WAS_DONE.md). This document explains:
+- The original scaffold request
+- How each lab depends on prior work
+- Real issues encountered (CORS, account formats, pandas warnings)
+- Virtual environment and dependency strategy
+- Prompt samples used to drive changes
 
 ## 🎓 Learning Path
 

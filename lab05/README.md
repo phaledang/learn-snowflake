@@ -140,6 +140,8 @@ python -c "import dotenv; print('✅ Python-dotenv installed')"
 # Show installed packages
 pip list | findstr -i "snowflake pandas sqlalchemy"
 ```
+# 1.4 Select Interpreter
+![Select Interpreter](image.png)
 
 **Deactivating the Virtual Environment:**
 When you're done working in Lab05, you can deactivate the virtual environment:
