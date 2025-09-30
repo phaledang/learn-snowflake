@@ -98,7 +98,7 @@ def analyze_sample_data():
             product_category,
             amount,
             region
-        FROM employees
+        FROM sample_data
         LIMIT 100
     """)
     
