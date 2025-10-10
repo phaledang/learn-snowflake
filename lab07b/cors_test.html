@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI CORS Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { border-color: #28a745; background: #d4edda; }
+        .error { border-color: #dc3545; background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 FastAPI CORS Test</h1>
+        <p>This page tests CORS configuration for your FastAPI servers running on port 8080.</p>
+        
+        <h2>🎯 Simple API Server Tests</h2>
+        <button onclick="testSimpleHealth()">Test Health Endpoint</button>
+        <button onclick="testSimpleEmployees()">Test Employees Endpoint</button>
+        <div id="simpleResults"></div>
+        
+        <h2>🚀 Main API Server Tests</h2>
+        <button onclick="testMainHealth()">Test Health Endpoint</button>
+        <button onclick="testMainStatus()">Test Status Endpoint</button>
+        <div id="mainResults"></div>
+        
+        <h2>📝 Test Results</h2>
+        <div id="allResults"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080';
+        
+        function addResult(containerId, message, isSuccess = true) {
+            const container = document.getElementById(containerId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${isSuccess ? 'success' : 'error'}`;
+            resultDiv.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            container.appendChild(resultDiv);
+        }
+        
+        async function testEndpoint(url, containerId, description) {
+            try {
+                addResult(containerId, `🔄 Testing ${description}...`);
+                addResult('allResults', `🔄 Testing ${description}: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'http://localhost:3000' // Simulate React app origin
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(containerId, `✅ ${description} SUCCESS: ${JSON.stringify(data, null, 2)}`);
+                    addResult('allResults', `✅ ${description} SUCCESS`);
+                } else {
+                    addResult(containerId, `❌ ${description} FAILED: ${response.status} ${response.statusText}`, false);
+                    addResult('allResults', `❌ ${description} FAILED: ${response.status}`, false);
+                }
+            } catch (error) {
+                const errorMsg = `❌ ${description} ERROR: ${error.message}`;
+                addResult(containerId, errorMsg, false);
+                addResult('allResults', errorMsg, false);
+                
+                // Check for specific CORS errors
+                if (error.message.includes('CORS') || error.message.includes('scheme')) {
+                    addResult('allResults', `🚨 CORS Issue Detected! Check server CORS configuration.`, false);
+                }
+            }
+        }
+        
+        // Simple API Server tests
+        async function testSimpleHealth() {
+            await testEndpoint(`${API_BASE_URL}/health`, 'simpleResults', 'Simple API Health');
+        }
+        
+        async function testSimpleEmployees() {
+            await testEndpoint(`${API_BASE_URL}/employees`, 'simpleResults', 'Simple API Employees');
+        }
+        
+        // Main API Server tests  
+        async function testMainHealth() {
+            await testEndpoint(`${API_BASE_URL}/health`, 'mainResults', 'Main API Health');
+        }
+        
+        async function testMainStatus() {
+            await testEndpoint(`${API_BASE_URL}/status`, 'mainResults', 'Main API Status');
+        }
+        
+        // Test preflight OPTIONS request
+        async function testPreflight(url) {
+            try {
+                const response = await fetch(url, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type',
+                        'Origin': 'http://localhost:3000'
+                    }
+                });
+                
+                if (response.ok) {
+                    addResult('allResults', `✅ CORS Preflight OK for ${url}`);
+                } else {
+                    addResult('allResults', `❌ CORS Preflight FAILED for ${url}`, false);
+                }
+            } catch (error) {
+                addResult('allResults', `❌ CORS Preflight ERROR: ${error.message}`, false);
+            }
+        }
+        
+        // Auto-run basic tests when page loads
+        window.onload = function() {
+            addResult('allResults', '🚀 Starting CORS tests...');
+            setTimeout(() => {
+                testSimpleHealth();
+                setTimeout(() => testMainHealth(), 1000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>
