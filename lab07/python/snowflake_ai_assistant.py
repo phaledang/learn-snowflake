@@ -153,6 +153,64 @@ class FileProcessingTool(BaseTool):
         return self._run(file_path)
 
 
+class CurrencyConverterTool(BaseTool):
+    """Tool for converting currency amounts from USD to EUR using live exchange rates."""
+    
+    name: str = "currency_converter"
+    description: str = """Convert currency amounts from USD to EUR using live exchange rates.
+    Input should be a number representing the USD amount to convert.
+    Returns the equivalent amount in EUR with current exchange rate."""
+    
+    def _run(self, usd_amount: str) -> str:
+        """Convert USD amount to EUR using exchange rate API."""
+        try:
+            import requests
+            
+            # Parse the USD amount
+            try:
+                amount = float(str(usd_amount).replace('$', '').replace(',', '').strip())
+            except ValueError:
+                return f"Invalid amount format: {usd_amount}. Please provide a numeric value."
+            
+            if amount < 0:
+                return "Amount must be positive."
+            
+            # Use a free exchange rate API (Exchange Rates API)
+            # Alternative: https://api.exchangerate-api.com/v4/latest/USD
+            api_url = "https://api.exchangerate-api.com/v4/latest/USD"
+            
+            response = requests.get(api_url, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Get EUR exchange rate
+            if 'rates' not in data or 'EUR' not in data['rates']:
+                return "EUR exchange rate not available in API response."
+            
+            eur_rate = data['rates']['EUR']
+            eur_amount = amount * eur_rate
+            
+            # Format the response
+            result = f"💰 Currency Conversion:\n"
+            result += f"USD ${amount:,.2f} = EUR €{eur_amount:,.2f}\n"
+            result += f"Exchange Rate: 1 USD = {eur_rate:.4f} EUR\n"
+            result += f"Last Updated: {data.get('date', 'N/A')}"
+            
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            return f"Error fetching exchange rate: {str(e)}. Please check your internet connection."
+        except KeyError as e:
+            return f"Error parsing exchange rate data: Missing key {str(e)}"
+        except Exception as e:
+            return f"Error converting currency: {str(e)}"
+    
+    async def _arun(self, usd_amount: str) -> str:
+        """Async version of the run method."""
+        return self._run(usd_amount)
+
+
 class SnowflakeAIAssistant:
     """Advanced LangChain OpenAI Assistant with Snowflake integration."""
     
@@ -176,7 +234,8 @@ class SnowflakeAIAssistant:
         self.tools = [
             SnowflakeQueryTool(),
             SchemaInspectionTool(),
-            FileProcessingTool()
+            FileProcessingTool(),
+            CurrencyConverterTool()
         ]
         
         # Load business guidelines
@@ -245,7 +304,7 @@ You have access to the following capabilities:
 1. Execute SQL queries against Snowflake databases
 2. Inspect database schemas and table structures  
 3. Process and analyze uploaded files
-4. Provide data insights and recommendations
+4. Convert currency from USD to EUR using live exchange rates
 
 Business Guidelines:
 {self.business_guidelines}
@@ -257,6 +316,8 @@ Key Instructions:
 - Suggest query optimizations when relevant
 - If uncertain about data access permissions, ask for clarification
 - Format results in a clear, business-friendly manner
+- When users ask about prices in EUR, automatically convert USD prices using the currency converter tool
+- Always show both USD and EUR amounts when doing currency conversions
 
 Current database context:
 - Database: {os.getenv('SNOWFLAKE_DATABASE', 'LEARN_SNOWFLAKE')}
