@@ -1,19 +1,23 @@
 # Python Requirements for Lab 07c: Advanced LangGraph with Multi-Database State Management
 # Install with: pip install -r requirements.txt
 
-# Core Snowflake connectivity (inherited from lab05)
-snowflake-connector-python==3.6.0
-pandas>=2.2.0
-numpy>=1.26.0
+# Core Snowflake connectivity
+snowflake-connector-python==3.12.3
+snowflake-sqlalchemy==1.6.1
+pandas==2.2.3
+numpy==1.26.4
 
-# LangChain core framework
-langchain>=0.1.0
-langchain-core>=0.1.0
-langchain-openai>=0.0.5
-langchain-community>=0.0.13
+# LangChain core framework - Updated to latest versions
+langchain==0.3.11
+langchain-core==0.3.79
+langchain-openai==0.3.35
+langchain-community==0.3.13
 
-# LangGraph framework (next-generation agent framework)
-langgraph>=0.1.0
+# LangGraph framework - Updated to latest versions
+langgraph==0.6.10
+langgraph-checkpoint==2.1.2
+langgraph-prebuilt==0.6.4
+langgraph-sdk==0.2.9
 
 # Database connectivity for state management
 psycopg2-binary>=2.9.0  # PostgreSQL
@@ -21,31 +25,58 @@ pyodbc>=4.0.39          # SQL Server/Azure SQL
 azure-cosmos>=4.5.0     # Azure Cosmos DB
 aiosqlite>=0.19.0       # Async SQLite
 
-# Azure AD Authentication
-azure-identity>=1.15.0  # Azure AD integrated authentication
-msal>=1.24.0            # Microsoft Authentication Library
-cryptography>=41.0.0    # For token encryption/decryption
+# Azure AD Authentication - Updated versions
+azure-identity==1.25.1
+azure-core==1.36.0
+msal==1.34.0
+msal-extensions==1.3.1
+cryptography==46.0.2
 
-# Azure OpenAI integration
-openai>=1.7.0
+# Azure OpenAI integration - Updated
+openai==2.3.0
 
 # Environment management
-python-dotenv==1.0.0
+python-dotenv==1.1.1
 
-# HTTP requests for currency conversion API
-requests>=2.28.0
+# HTTP requests and API handling
+requests==2.32.4
+httpx==0.28.1
 
-# File handling and code interpretation
+# JSON processing and serialization
+orjson==3.11.3
+ormsgpack==1.11.0
+jsonpatch==1.33
+jsonpointer==3.0.0
+
+# Security and authentication
+PyJWT==2.10.1
+
+# Type validation and utilities
+pydantic==2.12.2
+pydantic-core==2.41.4
+typing-extensions==4.14.1
+annotated-types==0.7.0
+
+# Text processing and tokenization
+tiktoken==0.12.0
+regex==2025.9.18
+
+# Additional utilities
+tenacity==9.1.2          # Retry logic
+xxhash==3.6.0           # Fast hashing
+tqdm==4.67.1            # Progress bars
+packaging==25.0         # Package utilities
+
+# System utilities
+distro==1.9.0           # OS detection
+sniffio==1.3.1          # Async detection
+
+# File handling and parsing
 pypdf2>=3.0.0
 python-docx>=1.1.0
 python-pptx>=0.6.20
 openpyxl==3.1.2
-
-# Additional utilities
-requests==2.31.0
 sqlparse==0.4.4
-pydantic>=2.5.0
-tiktoken>=0.5.0
 
 # Web framework (optional for advanced examples)
 flask==3.0.0

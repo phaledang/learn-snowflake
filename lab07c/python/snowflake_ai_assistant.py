@@ -380,7 +380,7 @@ Remember to use the available tools to interact with the database and process fi
             if result["messages"]:
                 last_message = result["messages"][-1]
                 if isinstance(last_message, AIMessage):
-                    return last_message.content
+                    return last_message.contentlogin
                 
             return "No response generated."
             
