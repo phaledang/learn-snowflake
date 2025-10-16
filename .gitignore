@@ -73,3 +73,4 @@ config.ini
 
 # Node modules (if any JS tools are used)
 node_modules/
+.auth_token

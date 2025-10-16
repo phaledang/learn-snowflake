@@ -8,6 +8,7 @@ import asyncio
 import json
 import sqlite3
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, AsyncIterator, Union
 from dataclasses import dataclass, asdict
@@ -15,8 +16,8 @@ from abc import ABC, abstractmethod
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
-# Note: SQLite checkpointer may not be available in this LangGraph version
-# from langgraph.checkpoint.sqlite import SqliteSaver
+# Import our custom SQLite checkpointer
+from sqlite_checkpointer import SQLiteCheckpointSaver
 
 from thread_config import ThreadManagerConfig, DatabaseType, get_thread_config
 
@@ -35,6 +36,56 @@ class ThreadMetadata:
     def __post_init__(self):
         if self.tags is None:
             self.tags = []
+
+def generate_thread_name(first_message: str, max_length: int = 200) -> str:
+    """Generate a meaningful thread name from the first user message"""
+    if not first_message:
+        return "New Conversation"
+    
+    # Clean the message
+    cleaned = re.sub(r'[^\w\s\-.,!?]', '', first_message.strip())
+    
+    # Remove common prefixes and conversational starters
+    prefixes_to_remove = [
+        r'^(hi|hello|hey|greetings)[!,]?\s*',
+        r'^(can you|could you|please)\s+',
+        r'^(i need|i want|i would like)\s+(to\s+)?',
+        r'^(help me|assist me)\s+(with\s+)?',
+    ]
+    
+    for prefix in prefixes_to_remove:
+        cleaned = re.sub(prefix, '', cleaned, flags=re.IGNORECASE)
+    
+    # Capitalize first letter
+    cleaned = cleaned.strip()
+    if cleaned:
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    
+    # Truncate to max length
+    if len(cleaned) > max_length:
+        cleaned = cleaned[:max_length-3] + "..."
+    
+    return cleaned if cleaned else "New Conversation"
+
+def resolve_thread_name_conflicts(proposed_name: str, existing_names: List[str]) -> str:
+    """Resolve naming conflicts by adding numbers (1, 2, 3...)"""
+    if proposed_name not in existing_names:
+        return proposed_name
+    
+    base_name = proposed_name
+    counter = 2  # Start with 2 since the original name (without number) is (1)
+    
+    # If the name already ends with a number, extract the base and continue from there
+    match = re.match(r'^(.+?)\s*\((\d+)\)$', proposed_name)
+    if match:
+        base_name = match.group(1)
+        counter = int(match.group(2)) + 1
+    
+    while True:
+        new_name = f"{base_name} ({counter})"
+        if new_name not in existing_names:
+            return new_name
+        counter += 1
 
 class StateBackend(ABC):
     """Abstract base class for state persistence backends"""
@@ -111,18 +162,43 @@ class SQLiteStateBackend(StateBackend):
             conn.commit()
     
     async def save_checkpoint(self, thread_id: str, checkpoint: Dict[str, Any], user_id: str = "") -> bool:
-        """Save checkpoint to SQLite"""
+        """Save checkpoint to SQLite with smart thread naming"""
         try:
             checkpoint_id = str(datetime.now().timestamp())
             checkpoint_json = json.dumps(checkpoint)
             
             with sqlite3.connect(self.db_path) as conn:
+                # Check if this is a new thread (no existing metadata)
+                cursor = conn.execute(f"""
+                    SELECT title, message_count FROM {self.table_name}_metadata 
+                    WHERE thread_id = ?
+                """, (thread_id,))
+                existing = cursor.fetchone()
+                
+                thread_title = ""
+                if not existing:
+                    # New thread - generate title from first user message
+                    thread_title = self._extract_title_from_checkpoint(checkpoint)
+                    if thread_title:
+                        # Resolve naming conflicts
+                        existing_titles = self._get_existing_titles(conn, user_id)
+                        thread_title = resolve_thread_name_conflicts(thread_title, existing_titles)
+                
                 # Update or insert thread metadata
-                conn.execute(f"""
-                    INSERT OR REPLACE INTO {self.table_name}_metadata 
-                    (thread_id, user_id, last_updated, message_count)
-                    VALUES (?, ?, ?, COALESCE((SELECT message_count + 1 FROM {self.table_name}_metadata WHERE thread_id = ?), 1))
-                """, (thread_id, user_id, datetime.now(), thread_id))
+                if existing:
+                    # Existing thread - just update message count and timestamp
+                    conn.execute(f"""
+                        UPDATE {self.table_name}_metadata 
+                        SET last_updated = ?, message_count = message_count + 1
+                        WHERE thread_id = ?
+                    """, (datetime.now(), thread_id))
+                else:
+                    # New thread - insert with generated title
+                    conn.execute(f"""
+                        INSERT INTO {self.table_name}_metadata 
+                        (thread_id, user_id, created_at, last_updated, title, message_count)
+                        VALUES (?, ?, ?, ?, ?, 1)
+                    """, (thread_id, user_id, datetime.now(), datetime.now(), thread_title))
                 
                 # Save checkpoint
                 conn.execute(f"""
@@ -136,6 +212,53 @@ class SQLiteStateBackend(StateBackend):
         except Exception as e:
             logging.error(f"Failed to save checkpoint for {thread_id}: {e}")
             return False
+    
+    def _extract_title_from_checkpoint(self, checkpoint: Dict[str, Any]) -> str:
+        """Extract a meaningful title from the checkpoint data"""
+        try:
+            # Look for messages in the checkpoint
+            if 'channel_values' in checkpoint:
+                messages = checkpoint['channel_values'].get('messages', [])
+                if messages:
+                    # Find the first human message
+                    for msg in messages:
+                        if isinstance(msg, dict):
+                            if msg.get('type') == 'human' or msg.get('__type__') == 'human':
+                                content = msg.get('content', '')
+                                if content and isinstance(content, str):
+                                    return generate_thread_name(content)
+            
+            # Fallback: look for any message content
+            checkpoint_str = json.dumps(checkpoint)
+            if 'content' in checkpoint_str:
+                # Try to extract first meaningful content
+                import re
+                content_matches = re.findall(r'"content":\s*"([^"]+)"', checkpoint_str)
+                for content in content_matches:
+                    if len(content) > 10 and not content.startswith('I'):  # Skip AI responses
+                        return generate_thread_name(content)
+                        
+        except Exception as e:
+            logging.warning(f"Could not extract title from checkpoint: {e}")
+        
+        return "New Conversation"
+    
+    def _get_existing_titles(self, conn, user_id: str) -> List[str]:
+        """Get list of existing thread titles for conflict resolution"""
+        try:
+            if user_id:
+                cursor = conn.execute(f"""
+                    SELECT title FROM {self.table_name}_metadata 
+                    WHERE user_id = ? AND title IS NOT NULL AND title != ''
+                """, (user_id,))
+            else:
+                cursor = conn.execute(f"""
+                    SELECT title FROM {self.table_name}_metadata 
+                    WHERE title IS NOT NULL AND title != ''
+                """)
+            return [row[0] for row in cursor.fetchall()]
+        except Exception:
+            return []
     
     async def load_checkpoint(self, thread_id: str, user_id: str = "") -> Optional[Dict[str, Any]]:
         """Load latest checkpoint from SQLite"""
@@ -329,7 +452,14 @@ class ThreadStateManager:
     
     def __init__(self, config: ThreadManagerConfig):
         self.config = config
+        self.current_user_id = ""
         self.backend = self._create_backend()
+        self.checkpointer = self._create_checkpointer()
+    
+    def set_user_id(self, user_id: str):
+        """Set the current user ID for thread isolation"""
+        self.current_user_id = user_id
+        # Recreate checkpointer with new user ID
         self.checkpointer = self._create_checkpointer()
     
     def _create_backend(self) -> StateBackend:
@@ -354,12 +484,15 @@ class ThreadStateManager:
         """Create LangGraph checkpointer"""
         
         if self.config.config.database_type == DatabaseType.SQLITE:
-            # Note: For now using MemorySaver as SQLite checkpointer may not be available
-            # TODO: Implement proper SQLite persistence when available
-            print(f"⚠️  SQLite persistence not yet available, using memory-based storage")
-            return MemorySaver()
+            # Use our custom SQLite checkpointer for persistent storage
+            print(f"✅ Using persistent SQLite storage: {self.config.config.connection_string}")
+            return SQLiteCheckpointSaver(
+                db_path=self.config.config.connection_string,
+                user_id=self.current_user_id
+            )
         
         else:
+            print(f"⚠️  Using memory-based storage for {self.config.config.database_type}")
             return MemorySaver()
     
     async def get_threads(self, user_id: str = "", limit: int = 100) -> List[ThreadMetadata]:
