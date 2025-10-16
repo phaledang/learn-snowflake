@@ -87,6 +87,7 @@ class AzureADAuth:
         """Load cached authentication from file with timeout"""
         try:
             if not os.path.exists(self.token_file):
+                print("🔍 No cached authentication file found")
                 return False
                 
             # Quick file size check - if too large, skip
@@ -100,16 +101,23 @@ class AzureADAuth:
             # Quick validation without full object creation
             required_fields = ['user_id', 'display_name', 'email', 'expires_at']
             if not all(field in data for field in required_fields):
+                print("⚠️ Auth cache missing required fields, removing...")
                 os.remove(self.token_file)
                 return False
             
             # Quick expiry check
             try:
                 expires_at = datetime.fromisoformat(data['expires_at'])
+                time_remaining = expires_at - datetime.now()
+                
                 if datetime.now() >= expires_at:
+                    print("⚠️ Cached authentication expired, removing...")
                     os.remove(self.token_file)
                     return False
+                else:
+                    print(f"✅ Found valid cached authentication (expires in {time_remaining})")
             except (ValueError, KeyError):
+                print("⚠️ Auth cache has invalid expiration, removing...")
                 os.remove(self.token_file)
                 return False
             
@@ -120,7 +128,7 @@ class AzureADAuth:
             
         except Exception as e:
             # If any error occurs, just proceed without cached auth
-            logging.warning(f"Failed to load cached auth (skipping): {e}")
+            print(f"⚠️ Failed to load cached auth: {e}")
             try:
                 if os.path.exists(self.token_file):
                     os.remove(self.token_file)
@@ -135,7 +143,10 @@ class AzureADAuth:
             with open(self.token_file, 'w') as f:
                 json.dump(user_info.to_dict(), f, indent=2)
             self.current_user = user_info
+            print(f"💾 Authentication saved to {self.token_file}")
+            print(f"📅 Expires at: {user_info.expires_at}")
         except Exception as e:
+            print(f"❌ Failed to save auth: {e}")
             logging.error(f"Failed to save auth: {e}")
     
     def is_authenticated(self) -> bool:
@@ -174,10 +185,12 @@ class AzureADAuth:
                 print(f"🔍 Found {len(accounts)} cached account(s), attempting silent login...")
                 result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
                 if result and "access_token" in result:
-                    print("✅ Using cached authentication tokens!")
+                    print("✅ Using MSAL cached authentication tokens!")
                     return self._process_auth_result(result)
                 else:
-                    print("⚠️  Cached tokens expired, proceeding with interactive login...")
+                    print("⚠️  MSAL cached tokens expired, proceeding with interactive login...")
+            else:
+                print("🔍 No MSAL cached accounts found")
             
             # Interactive authentication using MSAL's optimized flow
             print("🌐 Opening browser for Azure AD authentication...")
