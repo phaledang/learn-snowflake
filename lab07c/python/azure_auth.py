@@ -3,42 +3,7 @@
 Azure AD Authentication Module for Lab 07c
 Integrated authentication with Azure AD using client credentials and device flow
 """
-        try:
-            print("            if result and "access_token" in result:
-                print("✅ Authentication successful!")
-                print("� Tokens cached automatically for future use")
-                return self._process_auth_result(result)
-            else:
-                error_msg = result.get("error_description", "Unknown authentication error") if result else "No result returned"
-                error_code = result.get("error", "unknown_error") if result else "no_result"
-                
-                # Provide specific guidance for common errors
-                troubleshooting = ""
-                if "client_assertion" in error_msg or "client_secret" in error_msg:
-                    troubleshooting = "\n\n🔧 TROUBLESHOOTING:\n"
-                    troubleshooting += "This error suggests the Azure AD app is configured as 'Confidential' instead of 'Public'.\n"
-                    troubleshooting += "1. Go to Azure Portal > Azure Active Directory > App registrations\n"
-                    troubleshooting += f"2. Find your app (Client ID: {self.client_id})\n"
-                    troubleshooting += "3. Go to Authentication > Advanced settings\n"
-                    troubleshooting += "4. Set 'Allow public client flows' to 'Yes'\n"
-                    troubleshooting += "5. Make sure 'Supported account types' allows the intended users\n"
-                    troubleshooting += "6. Add redirect URI: http://localhost (or use Device Code Flow instead)"
-                
-                return False, f"Authentication failed [{error_code}]: {error_msg}{troubleshooting}"
-                
-        except Exception as e:
-            error_str = str(e)
-            if "client_assertion" in error_str or "client_secret" in error_str:
-                troubleshooting = "\n\n🔧 The Azure AD app registration needs to be configured as a PUBLIC client, not confidential."
-                return False, f"Authentication error: {error_str}{troubleshooting}"
-            return False, f"Authentication error: {error_str}" Azure AD API authentication...")
-            print("🔧 This will use MSAL's optimized desktop app flow.")
-            print(f"🏢 Tenant: {self.tenant_id}")
-            print(f"📱 Client ID: {self.client_id[:8]}...")
-            
-            # Verify app configuration
-            if not self.app:
-                return False, "MSAL PublicClientApplication not initialized. Check client configuration."port os
+import os
 import json
 import time
 import webbrowser
@@ -195,7 +160,13 @@ class AzureADAuth:
         
         try:
             print("🔐 Starting Azure AD API authentication...")
-            print("� This will use MSAL's optimized desktop app flow.")
+            print("🔧 This will use MSAL's optimized desktop app flow.")
+            print(f"🏢 Tenant: {self.tenant_id}")
+            print(f"📱 Client ID: {self.client_id[:8]}...")
+            
+            # Verify app configuration
+            if not self.app:
+                return False, "MSAL PublicClientApplication not initialized. Check client configuration."
             
             # Try silent authentication first (cached tokens)
             accounts = self.app.get_accounts()
@@ -220,80 +191,59 @@ class AzureADAuth:
             
             if result and "access_token" in result:
                 print("✅ Authentication successful!")
-                print("� Tokens cached automatically for future use")
+                print("📝 Tokens cached automatically for future use")
                 return self._process_auth_result(result)
             else:
-                error_msg = result.get("error_description", "Unknown authentication error")
-                error_code = result.get("error", "unknown_error")
-                return False, f"Authentication failed [{error_code}]: {error_msg}"
+                error_msg = result.get("error_description", "Unknown authentication error") if result else "No result returned"
+                error_code = result.get("error", "unknown_error") if result else "no_result"
+                
+                # Provide specific guidance for common errors
+                troubleshooting = ""
+                if "client_assertion" in error_msg or "client_secret" in error_msg:
+                    troubleshooting = "\n\n🔧 TROUBLESHOOTING:\n"
+                    troubleshooting += "This error suggests the Azure AD app is configured as 'Confidential' instead of 'Public'.\n"
+                    troubleshooting += "1. Go to Azure Portal > Azure Active Directory > App registrations\n"
+                    troubleshooting += f"2. Find your app (Client ID: {self.client_id})\n"
+                    troubleshooting += "3. Go to Authentication > Advanced settings\n"
+                    troubleshooting += "4. Set 'Allow public client flows' to 'Yes'\n"
+                    troubleshooting += "5. Make sure 'Supported account types' allows the intended users\n"
+                    troubleshooting += "6. Add redirect URI: http://localhost (or use Device Code Flow instead)"
+                
+                return False, f"Authentication failed [{error_code}]: {error_msg}{troubleshooting}"
                 
         except Exception as e:
-            return False, f"Authentication error: {str(e)}"
+            error_str = str(e)
+            if "client_assertion" in error_str or "client_secret" in error_str:
+                troubleshooting = "\n\n🔧 The Azure AD app registration needs to be configured as a PUBLIC client, not confidential."
+                return False, f"Authentication error: {error_str}{troubleshooting}"
+            return False, f"Authentication error: {error_str}"
     
-    def refresh_token(self) -> Tuple[bool, str]:
-        """Refresh the current access token using cached refresh token"""
+    def _process_auth_result(self, result: Dict[str, Any]) -> Tuple[bool, str]:
+        """Process authentication result and extract user info"""
         try:
-            accounts = self.app.get_accounts()
-            if not accounts:
-                return False, "No cached accounts found. Please login again."
+            # Decode the ID token to get user information
+            id_token = result.get("id_token")
+            if not id_token:
+                return False, "No ID token received"
             
-            print("🔄 Refreshing access token...")
-            result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
+            # Decode JWT (note: in production, verify signature)
+            decoded_token = jwt.decode(id_token, options={"verify_signature": False})
             
-            if result and "access_token" in result:
-                print("✅ Token refreshed successfully!")
-                return self._process_auth_result(result)
-            else:
-                return False, "Token refresh failed. Please login again."
-        except Exception as e:
-            return False, f"Token refresh error: {str(e)}"
-    
-    def get_cached_token(self) -> Optional[str]:
-        """Get a valid access token from cache, refreshing if needed"""
-        try:
-            accounts = self.app.get_accounts()
-            if not accounts:
-                return None
-            
-            result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
-            if result and "access_token" in result:
-                return result["access_token"]
-            return None
-        except Exception:
-            return None
-    
-    def login_interactive_fallback(self) -> Tuple[bool, str]:
-        """Fallback interactive login using MSAL's default random port behavior"""
-        if not self.client_id:
-            return False, "Azure AD Client ID not configured."
-        
-        try:
-            print("🔐 Using fallback authentication with MSAL default behavior...")
-            print("ℹ️  This will use random ports - configure Azure AD to accept 'http://localhost'")
-            
-            # Try silent authentication first
-            accounts = self.app.get_accounts()
-            if accounts:
-                print("Found cached account, attempting silent login...")
-                result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
-                if result and "access_token" in result:
-                    return self._process_auth_result(result)
-            
-            # Use MSAL's default interactive authentication
-            print("Opening browser for authentication...")
-            result = self.app.acquire_token_interactive(
-                scopes=self.scopes,
-                prompt="select_account"
+            user_info = UserInfo(
+                user_id=decoded_token.get("oid", decoded_token.get("sub", "unknown")),
+                display_name=decoded_token.get("name", "Unknown User"),
+                email=decoded_token.get("preferred_username", decoded_token.get("email", "unknown@unknown.com")),
+                tenant_id=decoded_token.get("tid", self.tenant_id),
+                authenticated_at=datetime.now(),
+                expires_at=datetime.now() + timedelta(seconds=result.get("expires_in", 3600))
             )
             
-            if result and "access_token" in result:
-                return self._process_auth_result(result)
-            else:
-                error_msg = result.get("error_description", "Unknown authentication error")
-                return False, f"Authentication failed: {error_msg}"
-                
+            self._save_auth(user_info)
+            
+            return True, f"Successfully authenticated as {user_info.display_name}"
+            
         except Exception as e:
-            return False, f"Fallback authentication error: {str(e)}"
+            return False, f"Failed to process authentication: {str(e)}"
     
     def login_device_code(self) -> Tuple[bool, str]:
         """Device code flow login (for environments without browser)"""
@@ -394,72 +344,6 @@ class AzureADAuth:
         except Exception as e:
             print(f"❌ Integrated authentication failed: {str(e)}")
             return False, f"Integrated authentication failed: {str(e)}"
-    
-    def _process_auth_result(self, result: Dict[str, Any]) -> Tuple[bool, str]:
-        """Process authentication result and extract user info"""
-        try:
-            # Decode the ID token to get user information
-            id_token = result.get("id_token")
-            if not id_token:
-                return False, "No ID token received"
-            
-            # Decode JWT (note: in production, verify signature)
-            decoded_token = jwt.decode(id_token, options={"verify_signature": False})
-            
-            user_info = UserInfo(
-                user_id=decoded_token.get("oid", decoded_token.get("sub", "unknown")),
-                display_name=decoded_token.get("name", "Unknown User"),
-                email=decoded_token.get("preferred_username", decoded_token.get("email", "unknown@unknown.com")),
-                tenant_id=decoded_token.get("tid", self.tenant_id),
-                authenticated_at=datetime.now(),
-                expires_at=datetime.now() + timedelta(seconds=result.get("expires_in", 3600))
-            )
-            
-            self._save_auth(user_info)
-            
-            return True, f"Successfully authenticated as {user_info.display_name}"
-            
-        except Exception as e:
-            return False, f"Failed to process authentication: {str(e)}"
-    
-    def logout(self) -> bool:
-        """Logout current user"""
-        try:
-            if os.path.exists(self.token_file):
-                os.remove(self.token_file)
-            
-            self.current_user = None
-            
-            # Clear MSAL cache
-            if self.app:
-                accounts = self.app.get_accounts()
-                for account in accounts:
-                    self.app.remove_account(account)
-            
-            return True
-        except Exception as e:
-            logging.error(f"Logout failed: {e}")
-            return False
-    
-    def get_auth_status(self) -> Dict[str, Any]:
-        """Get current authentication status"""
-        if self.is_authenticated():
-            user = self.current_user
-            return {
-                "authenticated": True,
-                "user_id": user.user_id,
-                "display_name": user.display_name,
-                "email": user.email,
-                "authenticated_at": user.authenticated_at.isoformat(),
-                "expires_at": user.expires_at.isoformat(),
-                "time_remaining": str(user.expires_at - datetime.now())
-            }
-        else:
-            return {
-                "authenticated": False,
-                "client_id_configured": bool(self.client_id),
-                "tenant_id": self.tenant_id
-            }
 
 class LoginTool:
     """Interactive login tool for the assistant"""
@@ -526,19 +410,6 @@ class LoginTool:
     def is_authenticated(self) -> bool:
         """Check if user is authenticated"""
         return self.auth.is_authenticated()
-    
-    def get_auth_status(self) -> Dict[str, Any]:
-        """Get authentication status"""
-        return self.auth.get_auth_status()
-    
-    def logout(self) -> bool:
-        """Logout current user"""
-        if self.auth.logout():
-            print("✅ Successfully logged out")
-            return True
-        else:
-            print("❌ Failed to logout")
-            return False
 
 # Global authentication instance
 _login_tool: Optional[LoginTool] = None
@@ -556,17 +427,11 @@ if __name__ == "__main__":
     
     login_tool = get_login_tool()
     
-    print("\nCurrent Status:")
-    status = login_tool.get_auth_status()
-    print(json.dumps(status, indent=2))
-    
     if not login_tool.is_authenticated():
         print("\nTesting login prompt...")
         success = login_tool.check_auth_or_prompt()
         
         if success:
             print(f"\nAuthenticated User ID: {login_tool.get_current_user_id()}")
-            status = login_tool.get_auth_status()
-            print(json.dumps(status, indent=2))
     
     print("\nAuthentication test complete.")
