@@ -77,7 +77,7 @@ class AzureADAuth:
             )
         
         # Token storage
-        self.token_file = ".auth_token"
+        self.token_file = os.path.join(os.path.dirname(__file__), ".auth_token")
         self.current_user: Optional[UserInfo] = None
         
         # Load existing authentication if available
@@ -235,7 +235,7 @@ class AzureADAuth:
                 email=decoded_token.get("preferred_username", decoded_token.get("email", "unknown@unknown.com")),
                 tenant_id=decoded_token.get("tid", self.tenant_id),
                 authenticated_at=datetime.now(),
-                expires_at=datetime.now() + timedelta(seconds=result.get("expires_in", 3600))
+                expires_at=datetime.now() + timedelta(seconds=result.get("expires_in", 7200))  # 2 hours default
             )
             
             self._save_auth(user_info)
@@ -344,6 +344,39 @@ class AzureADAuth:
         except Exception as e:
             print(f"❌ Integrated authentication failed: {str(e)}")
             return False, f"Integrated authentication failed: {str(e)}"
+    
+    def login_interactive_fallback(self) -> Tuple[bool, str]:
+        """Fallback interactive login using MSAL's default random port behavior"""
+        if not self.client_id:
+            return False, "Azure AD Client ID not configured."
+        
+        try:
+            print("🔐 Using fallback authentication with MSAL default behavior...")
+            print("ℹ️  This will use random ports - configure Azure AD to accept 'http://localhost'")
+            
+            # Try silent authentication first
+            accounts = self.app.get_accounts()
+            if accounts:
+                print("Found cached account, attempting silent login...")
+                result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
+                if result and "access_token" in result:
+                    return self._process_auth_result(result)
+            
+            # Use MSAL's default interactive authentication
+            print("Opening browser for authentication...")
+            result = self.app.acquire_token_interactive(
+                scopes=self.scopes,
+                prompt="select_account"
+            )
+            
+            if result and "access_token" in result:
+                return self._process_auth_result(result)
+            else:
+                error_msg = result.get("error_description", "Unknown authentication error")
+                return False, f"Authentication failed: {error_msg}"
+                
+        except Exception as e:
+            return False, f"Fallback authentication error: {str(e)}"
 
 class LoginTool:
     """Interactive login tool for the assistant"""
