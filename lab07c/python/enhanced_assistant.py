@@ -25,6 +25,7 @@ from thread_config import get_thread_config, ThreadManagerConfig
 from state_persistence import get_state_manager
 from azure_auth import get_login_tool, LoginTool
 import snowflake_connection
+from snowflake_ai_assistant import SnowflakeQueryTool, SchemaInspectionTool, FileProcessingTool
 
 class ThreadSelection:
     """Handle thread selection and management for conversations"""
@@ -235,6 +236,9 @@ class EnhancedSnowflakeAssistant:
         
         # Initialize tools
         self.tools = [
+            SnowflakeQueryTool(),
+            SchemaInspectionTool(), 
+            FileProcessingTool(),
             CurrencyConverterTool(),
             # Add other tools here as needed
         ]
@@ -257,6 +261,12 @@ CORE CAPABILITIES:
 - Thread-based conversation memory and context retention
 - Multi-session conversation continuity
 
+AVAILABLE TOOLS:
+- snowflake_query: Execute SQL queries against the Snowflake database
+- schema_inspection: Inspect database schema, tables, and column structures
+- file_processing: Process and analyze data files
+- currency_converter: Convert between different currencies
+
 THREAD MANAGEMENT:
 - You maintain conversation history across sessions using thread IDs
 - Each conversation thread preserves context, preferences, and ongoing work
@@ -267,12 +277,15 @@ SNOWFLAKE EXPERTISE:
 - Provide insights on data patterns, trends, and anomalies
 - Suggest performance optimizations and best practices
 - Handle window functions, CTEs, and advanced Snowflake features
+- Use schema_inspection tool to explore available tables before querying
+- Use snowflake_query tool to retrieve and analyze data
 
 CONVERSATION STYLE:
 - Be helpful, accurate, and context-aware
 - Reference previous conversations when relevant
 - Maintain professional yet friendly tone
 - Provide detailed explanations when requested
+- When users ask for data, always use the appropriate tools to query Snowflake
 
 When users ask questions, leverage your tools and maintain conversation context through the thread system."""
 
