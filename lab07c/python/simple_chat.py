@@ -189,23 +189,11 @@ def search_chat_history(limit=20):
             print("💡 Tip: Make sure you've had a conversation in this session\n")
             return
         
-        # Remove duplicates by keeping unique (timestamp, content) pairs
-        unique_messages = []
-        seen = set()
-        for msg in messages:
-            key = (msg[2],)  # Use content as key
-            if key not in seen:
-                seen.add(key)
-                unique_messages.append(msg)
-        
-        messages = unique_messages[-limit:]  # Get last 'limit' unique messages
-        
-        print(f"\n📜 Chat History ({len(messages)} messages):")
+        print(f"\n📜 Chat History ({len(messages)} recent messages):")
         print("=" * 60)
         
         # Sort by timestamp (oldest first)
         messages.sort(key=lambda x: x[0] if isinstance(x[0], datetime) else datetime.now())
-        messages.sort(key=lambda x: x[0])
         
         for timestamp, msg_type, content in messages:
             time_str = timestamp.strftime("%H:%M:%S") if isinstance(timestamp, datetime) else str(timestamp)
