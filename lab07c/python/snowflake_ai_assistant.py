@@ -236,6 +236,11 @@ class SnowflakeAIAssistant:
         # Check if Snowflake is enabled
         self.enable_snowflake = os.getenv('ENABLE_SNOWFLAKE', 'true').lower() == 'true'
         
+        # Initialize user context attributes (will be set by caller)
+        self._user_id = "default_user"
+        self._user_name = None
+        self._user_email = None
+        
         # Initialize LLM
         self.llm = self._initialize_llm()
         
@@ -445,6 +450,40 @@ Remember to use the available tools to interact with the database and process fi
         """Clear the conversation memory by creating a new thread."""
         self.thread_id = f"snowflake-assistant-session-{datetime.now().timestamp()}"
         print("Conversation memory cleared (new thread started).")
+    
+    @property
+    def user_id(self):
+        """Get the current user ID."""
+        return self._user_id
+    
+    @user_id.setter
+    def user_id(self, value: str):
+        """Set user ID and update checkpointer if it's a MongoDB checkpointer."""
+        self._user_id = value
+        # Update checkpointer's user_id if it has one
+        if hasattr(self.memory, 'user_id'):
+            self.memory.user_id = value
+            print(f"🔄 Updated checkpointer user_id to: {value}")
+    
+    @property
+    def user_name(self):
+        """Get the current user name."""
+        return self._user_name
+    
+    @user_name.setter
+    def user_name(self, value: str):
+        """Set user name."""
+        self._user_name = value
+    
+    @property
+    def user_email(self):
+        """Get the current user email."""
+        return self._user_email
+    
+    @user_email.setter
+    def user_email(self, value: str):
+        """Set user email."""
+        self._user_email = value
     
     def get_conversation_history(self) -> List[BaseMessage]:
         """Get the current conversation history."""

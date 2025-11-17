@@ -82,6 +82,7 @@ flask>=3.0.0
 streamlit>=1.28.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6  # Required for OAuth2 form handling
 
 # Development and testing
 jupyter>=1.0.0
