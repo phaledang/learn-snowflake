@@ -104,6 +104,9 @@ def check_environment():
     print("🔍 Environment Configuration Check")
     print("=" * 40)
     
+    # Check if Snowflake is enabled
+    enable_snowflake = os.getenv('ENABLE_SNOWFLAKE', 'true').lower() == 'true'
+    
     required_vars = [
         'SNOWFLAKE_ACCOUNT',
         'SNOWFLAKE_USER', 
@@ -111,28 +114,33 @@ def check_environment():
         'SNOWFLAKE_WAREHOUSE',
         'SNOWFLAKE_DATABASE',
         'SNOWFLAKE_SCHEMA'
-    ]
+    ] if enable_snowflake else []
     
     openai_vars = [
         ['AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT'],  # Azure OpenAI
         ['OPENAI_API_KEY']  # Direct OpenAI
     ]
     
-    # Check Snowflake variables
-    print("📊 Snowflake Configuration:")
-    missing_sf = []
-    for var in required_vars:
-        value = os.getenv(var)
-        if value:
-            # Mask sensitive information
-            if 'PASSWORD' in var or 'KEY' in var:
-                display_value = f"{value[:4]}{'*' * (len(value)-8)}{value[-4:]}" if len(value) > 8 else "***"
+    # Check Snowflake variables only if enabled
+    if enable_snowflake:
+        print("📊 Snowflake Configuration:")
+        missing_sf = []
+        for var in required_vars:
+            value = os.getenv(var)
+            if value:
+                # Mask sensitive information
+                if 'PASSWORD' in var or 'KEY' in var:
+                    display_value = f"{value[:4]}{'*' * (len(value)-8)}{value[-4:]}" if len(value) > 8 else "***"
+                else:
+                    display_value = value
+                print(f"  ✅ {var}: {display_value}")
             else:
-                display_value = value
-            print(f"  ✅ {var}: {display_value}")
-        else:
-            print(f"  ❌ {var}: Not set")
-            missing_sf.append(var)
+                print(f"  ❌ {var}: Not set")
+                missing_sf.append(var)
+    else:
+        print("📊 Snowflake Configuration:")
+        print(f"  ℹ️  Snowflake integration is disabled (ENABLE_SNOWFLAKE=false)")
+        missing_sf = []
     
     # Check OpenAI configuration
     print("\n🤖 OpenAI Configuration:")

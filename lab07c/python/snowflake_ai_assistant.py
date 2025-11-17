@@ -23,6 +23,7 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(__file__))
 from snowflake_connection import get_snowflake_connection
+from mongodb_checkpointer import MongoDBCheckpointSaver
 
 try:
     from pydantic import BaseModel, Field
@@ -232,16 +233,26 @@ class SnowflakeAIAssistant:
         self.assistant_name = os.getenv('ASSISTANT_NAME', 'SnowflakeAI')
         self.max_memory = int(os.getenv('MAX_CONVERSATION_MEMORY', '50'))
         
+        # Check if Snowflake is enabled
+        self.enable_snowflake = os.getenv('ENABLE_SNOWFLAKE', 'true').lower() == 'true'
+        
         # Initialize LLM
         self.llm = self._initialize_llm()
         
-        # Initialize tools
-        self.tools = [
-            SnowflakeQueryTool(),
-            SchemaInspectionTool(),
+        # Initialize tools (conditionally include Snowflake tools)
+        self.tools = []
+        
+        if self.enable_snowflake:
+            self.tools.extend([
+                SnowflakeQueryTool(),
+                SchemaInspectionTool(),
+            ])
+        
+        # Always include these tools
+        self.tools.extend([
             FileProcessingTool(),
             CurrencyConverterTool()
-        ]
+        ])
         
         # Load business guidelines
         self.business_guidelines = self._load_business_guidelines()
@@ -249,14 +260,39 @@ class SnowflakeAIAssistant:
         # Create system prompt
         self.system_prompt = self._create_system_prompt()
         
-        # Initialize memory saver for persistence
-        self.memory = MemorySaver()
+        # Initialize memory saver for persistence (MongoDB or in-memory)
+        self.memory = self._initialize_checkpointer()
         
         # Create LangGraph agent
         self.agent = self._create_langgraph_agent()
         
         # Thread ID for conversation persistence
         self.thread_id = "snowflake-assistant-session"
+    
+    def _initialize_checkpointer(self):
+        """Initialize the appropriate checkpointer based on configuration."""
+        db_connection = os.getenv('DATABASE_CONNECTION_STRING', '')
+        thread_manage = os.getenv('THREAD_MANAGE_CONNECTION', 'false').lower() == 'true'
+        
+        # Use MongoDB checkpointer if connection string is configured and thread management is enabled
+        if thread_manage and db_connection and 'cosmos' in db_connection.lower():
+            try:
+                print("🔄 Initializing Cosmos DB checkpointer...")
+                checkpointer = MongoDBCheckpointSaver(
+                    connection_string=db_connection,
+                    database_name="langgraph_db",
+                    collection_name="checkpoints",
+                    user_id="default_user"
+                )
+                print("✅ Cosmos DB checkpointer initialized successfully!")
+                return checkpointer
+            except Exception as e:
+                print(f"⚠️  Failed to initialize Cosmos DB checkpointer: {e}")
+                print("📝 Falling back to in-memory storage...")
+                return MemorySaver()
+        else:
+            print("📝 Using in-memory checkpointer (no persistence)")
+            return MemorySaver()
     
     def _initialize_llm(self):
         """Initialize the language model (Azure OpenAI or OpenAI)."""
@@ -309,13 +345,31 @@ class SnowflakeAIAssistant:
     
     def _create_system_prompt(self) -> str:
         """Create the system prompt for the assistant."""
-        return f"""You are {self.assistant_name}, an advanced AI assistant specialized in Snowflake database operations and data analysis, powered by LangGraph.
+        
+        # Build capabilities list based on enabled features
+        capabilities = []
+        if self.enable_snowflake:
+            capabilities.extend([
+                "1. Execute SQL queries against Snowflake databases",
+                "2. Inspect database schemas and table structures"
+            ])
+            capabilities.extend([
+                "3. Process and analyze uploaded files",
+                "4. Convert currency from USD to EUR using live exchange rates"
+            ])
+        else:
+            capabilities.extend([
+                "1. Process and analyze uploaded files",
+                "2. Convert currency from USD to EUR using live exchange rates",
+                "3. General conversation and assistance"
+            ])
+        
+        mode_description = "Snowflake database operations and data analysis" if self.enable_snowflake else "general assistance and file processing"
+        
+        return f"""You are {self.assistant_name}, an advanced AI assistant specialized in {mode_description}, powered by LangGraph.
 
 You have access to the following capabilities:
-1. Execute SQL queries against Snowflake databases
-2. Inspect database schemas and table structures  
-3. Process and analyze uploaded files
-4. Convert currency from USD to EUR using live exchange rates
+{chr(10).join(capabilities)}
 
 Business Guidelines:
 {self.business_guidelines}
@@ -380,7 +434,7 @@ Remember to use the available tools to interact with the database and process fi
             if result["messages"]:
                 last_message = result["messages"][-1]
                 if isinstance(last_message, AIMessage):
-                    return last_message.contentlogin
+                    return last_message.content
                 
             return "No response generated."
             

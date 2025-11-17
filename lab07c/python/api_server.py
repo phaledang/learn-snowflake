@@ -3,26 +3,53 @@ FastAPI Server for Snowflake AI Assistant with LangGraph
 Provides REST API endpoints for interacting with the LangGraph-powered AI assistant
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.security import OAuth2AuthorizationCodeBearer
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import os
 import sys
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from snowflake_ai_assistant import SnowflakeAIAssistant
 
-# Initialize FastAPI app
+# Azure AD OAuth2 Configuration
+AZURE_AD_CLIENT_ID = os.getenv("AZURE_AD_CLIENT_ID")
+AZURE_AD_TENANT_ID = os.getenv("AZURE_AD_TENANT_ID")
+AZURE_AD_REDIRECT_URI = os.getenv("AZURE_AD_REDIRECT_URI", "http://localhost:8080/auth/callback")
+
+# OAuth2 scheme for Swagger UI
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl=f"https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/oauth2/v2.0/authorize",
+    tokenUrl=f"https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/oauth2/v2.0/token",
+    scopes={
+        "openid": "OpenID Connect",
+        "profile": "User profile",
+        "email": "Email address",
+    }
+)
+
+# Initialize FastAPI app with OAuth2
 app = FastAPI(
     title="Snowflake AI Assistant API (LangGraph)",
-    description="REST API for interacting with Snowflake AI Assistant using LangGraph and OpenAI",
-    version="2.0.0"
+    description="REST API for interacting with Snowflake AI Assistant using LangGraph and OpenAI. Authenticate with Azure AD to access protected endpoints.",
+    version="2.0.0",
+    swagger_ui_init_oauth={
+        "clientId": AZURE_AD_CLIENT_ID,
+        "appName": "Snowflake AI Assistant",
+        "scopes": "openid profile email",
+        "usePkceWithAuthorizationCodeGrant": True,
+    }
 )
 
 # Enable CORS for cross-origin requests
@@ -89,6 +116,26 @@ async def health_check():
         timestamp=datetime.now()
     )
 
+# Authentication callback endpoint
+@app.get("/auth/callback")
+async def auth_callback(code: str = None, state: str = None, error: str = None):
+    """Handle OAuth2 callback from Azure AD."""
+    if error:
+        return JSONResponse(
+            status_code=400,
+            content={"error": error, "message": "Authentication failed"}
+        )
+    
+    if code:
+        # In a real implementation, you would exchange the code for tokens here
+        # For now, redirect to Swagger docs
+        return RedirectResponse(url="/docs")
+    
+    return JSONResponse(
+        status_code=400,
+        content={"error": "missing_code", "message": "Authorization code not provided"}
+    )
+
 # CORS preflight handler
 @app.options("/{path:path}")
 async def options_handler(path: str):
@@ -115,10 +162,13 @@ async def get_status():
         openai_configured=True if assistant else False     # Would need actual API test
     )
 
-# Main chat endpoint
+# Main chat endpoint (with optional authentication)
 @app.post("/chat", response_model=ChatResponse)
-async def chat_with_assistant(request: ChatRequest):
-    """Send a message to the AI assistant."""
+async def chat_with_assistant(
+    request: ChatRequest,
+    token: str = Depends(oauth2_scheme) if os.getenv("THREAD_REQUIRE_AUTHENTICATION", "false").lower() == "true" else None
+):
+    """Send a message to the AI assistant. Requires authentication if THREAD_REQUIRE_AUTHENTICATION is enabled."""
     global assistant
     
     if not assistant:
