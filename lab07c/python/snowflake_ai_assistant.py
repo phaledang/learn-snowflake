@@ -23,7 +23,7 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(__file__))
 from snowflake_connection import get_snowflake_connection
-from mongodb_checkpointer import MongoDBCheckpointSaver
+from cosmos_postgres_checkpointer import CosmosDBPostgresStyleCheckpointer
 
 try:
     from pydantic import BaseModel, Field
@@ -279,14 +279,13 @@ class SnowflakeAIAssistant:
         db_connection = os.getenv('DATABASE_CONNECTION_STRING', '')
         thread_manage = os.getenv('THREAD_MANAGE_CONNECTION', 'false').lower() == 'true'
         
-        # Use MongoDB checkpointer if connection string is configured and thread management is enabled
+        # Use Cosmos DB checkpointer if connection string is configured and thread management is enabled
         if thread_manage and db_connection and 'cosmos' in db_connection.lower():
             try:
                 print("🔄 Initializing Cosmos DB checkpointer...")
-                checkpointer = MongoDBCheckpointSaver(
+                checkpointer = CosmosDBPostgresStyleCheckpointer(
                     connection_string=db_connection,
                     database_name="langgraph_db",
-                    collection_name="checkpoints",
                     user_id="default_user"
                 )
                 print("✅ Cosmos DB checkpointer initialized successfully!")
@@ -406,30 +405,31 @@ Remember to use the available tools to interact with the database and process fi
         )
         return agent
     
-    def chat(self, message: str) -> str:
-        """Send a message to the assistant and get a response."""
+    def chat(self, message: str, thread_id: str = None) -> str:
+        """
+        Send a message to the assistant and get a response.
+        
+        Args:
+            message: User's message
+            thread_id: Optional thread ID (uses self.thread_id if not provided)
+        
+        Returns:
+            Assistant's response
+        """
         try:
+            # Use provided thread_id or fall back to instance thread_id
+            active_thread_id = thread_id or self.thread_id
+            
             # Create the config for this conversation thread
-            config = {"configurable": {"thread_id": self.thread_id}}
+            config = {"configurable": {"thread_id": active_thread_id}}
             
-            # Create messages with system prompt for first message in thread
-            messages = []
+            # With LangGraph checkpointer, we only pass the new message
+            # The agent will automatically load conversation history from the checkpoint
+            # and append the new message to it
+            messages = [HumanMessage(content=message)]
             
-            # Check if this is the start of a new conversation
-            try:
-                state = self.agent.get_state(config)
-                existing_messages = state.values.get("messages", [])
-                if not existing_messages:
-                    # Add system message for new conversations
-                    messages.append(SystemMessage(content=self.system_prompt))
-            except:
-                # If we can't get state, assume it's a new conversation
-                messages.append(SystemMessage(content=self.system_prompt))
-            
-            # Add the user message
-            messages.append(HumanMessage(content=message))
-            
-            # Invoke the agent with the messages
+            # Invoke the agent with just the new message
+            # The checkpointer handles loading and saving the full conversation state
             result = self.agent.invoke(
                 {"messages": messages},
                 config=config
@@ -472,8 +472,10 @@ Remember to use the available tools to interact with the database and process fi
     
     @user_name.setter
     def user_name(self, value: str):
-        """Set user name."""
+        """Set user name and update system prompt."""
         self._user_name = value
+        # Regenerate system prompt with user context
+        self._update_system_prompt_with_user_context()
     
     @property
     def user_email(self):
@@ -482,8 +484,45 @@ Remember to use the available tools to interact with the database and process fi
     
     @user_email.setter
     def user_email(self, value: str):
-        """Set user email."""
+        """Set user email and update system prompt."""
         self._user_email = value
+        # Regenerate system prompt with user context
+        self._update_system_prompt_with_user_context()
+    
+    def _update_system_prompt_with_user_context(self):
+        """Update system prompt to include user context if available."""
+        if self._user_name and self._user_email:
+            # Remove existing user context if present
+            if "CURRENT USER CONTEXT:" in self.system_prompt:
+                # Find and remove the old context
+                idx = self.system_prompt.find("CURRENT USER CONTEXT:")
+                # Find the end of the context block (next major section or end of string)
+                end_markers = ["\n\nBusiness Guidelines:", "\n\nKey Instructions:", "\n\nCurrent database"]
+                end_idx = len(self.system_prompt)
+                for marker in end_markers:
+                    marker_idx = self.system_prompt.find(marker, idx)
+                    if marker_idx != -1 and marker_idx < end_idx:
+                        end_idx = marker_idx
+                self.system_prompt = self.system_prompt[:idx] + self.system_prompt[end_idx:]
+            
+            # Add prominent user context at the beginning
+            user_context = f"""CURRENT USER CONTEXT:
+===================
+You are assisting: {self._user_name}
+Email: {self._user_email}
+
+IMPORTANT: When the user asks "who am I", "what's my name", "what's my email", or similar identity questions, 
+you MUST respond with the above name and email. Do not say you don't know or don't have access to this information.
+
+"""
+            # Prepend to the beginning of the system prompt (after the assistant name line)
+            lines = self.system_prompt.split('\n', 1)
+            if len(lines) > 1:
+                self.system_prompt = lines[0] + '\n\n' + user_context + '\n' + lines[1]
+            else:
+                self.system_prompt = user_context + '\n' + self.system_prompt
+            
+            print(f"✅ System prompt updated with user context: {self._user_name}")
     
     def get_conversation_history(self) -> List[BaseMessage]:
         """Get the current conversation history."""

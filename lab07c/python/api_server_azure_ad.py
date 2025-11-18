@@ -165,11 +165,20 @@ def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(s
             detail="Could not validate credentials"
         )
 
-def get_or_create_assistant(user_id: str) -> SnowflakeAIAssistant:
+def get_or_create_assistant(user_id: str, user_email: Optional[str] = None, user_name: Optional[str] = None) -> SnowflakeAIAssistant:
     """Get or create assistant for user"""
     if user_id not in assistants:
         print(f"Creating assistant for user: {user_id}")
-        assistants[user_id] = SnowflakeAIAssistant(use_azure=True)
+        assistant = SnowflakeAIAssistant(use_azure=True)
+        
+        # Only set user context if email and name are provided (i.e., authenticated user)
+        if user_email and user_name:
+            assistant.user_id = user_id
+            assistant.user_name = user_name
+            assistant.user_email = user_email
+            print(f"  ✅ User context set: {user_name} ({user_email})")
+        
+        assistants[user_id] = assistant
     return assistants[user_id]
 
 @app.on_event("startup")
@@ -447,7 +456,10 @@ async def chat(
     """
     try:
         user_id = user["user_id"]
-        assistant = get_or_create_assistant(user_id)
+        user_email = user.get("email")
+        user_name = user.get("name")
+        
+        assistant = get_or_create_assistant(user_id, user_email, user_name)
         
         # Update assistant's thread_id if provided
         if request.thread_id:
